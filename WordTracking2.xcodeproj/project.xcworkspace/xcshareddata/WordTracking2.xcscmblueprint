@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "4B11052C64BCE500B5E9E72119D4670B76E1D09E",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "1EA6D39F3BD6E1E9F3E19A20560CD0012FCA42BD" : 9223372036854775807,
+    "4B11052C64BCE500B5E9E72119D4670B76E1D09E" : 9223372036854775807
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "E1C4EC14-2E74-447B-9BCF-11C96D07809C",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "1EA6D39F3BD6E1E9F3E19A20560CD0012FCA42BD" : "",
+    "4B11052C64BCE500B5E9E72119D4670B76E1D09E" : "WordTracking2\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "WordTracking2",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "WordTracking2.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:bruce318\/learngit.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "1EA6D39F3BD6E1E9F3E19A20560CD0012FCA42BD"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:bruce318\/WordTracking2.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "4B11052C64BCE500B5E9E72119D4670B76E1D09E"
+    }
+  ]
+}

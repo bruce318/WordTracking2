@@ -16,6 +16,7 @@
 
 //global var
 const int MAX_CORNERS=550;
+std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
 
 //square function
 inline static double square(int a)
@@ -26,13 +27,13 @@ inline static double square(int a)
 
 int main(int argc, const char * argv[]) {
     
-    IplImage* imgA=cvLoadImage("/Users/boyang/workspace/WordTracking2/src1/IMG_6204.JPG",CV_LOAD_IMAGE_GRAYSCALE);
-    IplImage* imgB=cvLoadImage("/Users/boyang/workspace/WordTracking2/src1/IMG_6205.JPG",CV_LOAD_IMAGE_GRAYSCALE);
+    IplImage* imgA=cvLoadImage("/Users/boyang/workspace/WordTracking2/src1/1.JPG",CV_LOAD_IMAGE_GRAYSCALE);
+    IplImage* imgB=cvLoadImage("/Users/boyang/workspace/WordTracking2/src1/2.JPG",CV_LOAD_IMAGE_GRAYSCALE);
     
     CvSize img_sz=cvGetSize(imgA);
     int win_size=10;
     
-    IplImage* imgC=cvLoadImage("/Users/boyang/workspace/WordTracking2/src1/IMG_6204.JPG",CV_LOAD_IMAGE_UNCHANGED);
+    IplImage* imgC=cvLoadImage("/Users/boyang/workspace/WordTracking2/src1/2.JPG",CV_LOAD_IMAGE_UNCHANGED);
     
     
     IplImage* eig_image=cvCreateImage(img_sz,IPL_DEPTH_32F,1);
@@ -86,15 +87,23 @@ int main(int argc, const char * argv[]) {
     
     for(int i=0;i<corner_count;i++)
     {
-        if(features_found[i]==0||feature_errors[i]<3)
+        if(features_found[i]==0||feature_errors[i]>550)
         {
-            //   printf("error is %f/n",feature_errors[i]);
+            printf("error is %f/n",feature_errors[i]);
+            featureList[i].push_back(CvPoint(-1 , -1));
             continue;
         }
-        // printf("got it/n");
-        //CvPoint p0=cvPoint(cvRound(cornersA[i].x),cvRound(cornersA[i].y));
-        //CvPoint p1=cvPoint(cvRound(cornersB[i].x),cvRound(cornersB[i].y));
-        //cvLine(imgC,p0,p1,CV_RGB(255,0,0),2);
+         printf("got it/n");
+        CvPoint p0=cvPoint(cvRound(cornersA[i].x),cvRound(cornersA[i].y));
+        CvPoint p1=cvPoint(cvRound(cornersB[i].x),cvRound(cornersB[i].y));
+        cvLine(imgC,p0,p1,CV_RGB(255,0,0),2);
+        
+        
+        featureList[i].push_back(p0);
+        
+        
+        
+        /*
         int line_thickness;  line_thickness=1;
         
         CvScalar line_color;  line_color = CV_RGB(255, 0, 0);
@@ -113,8 +122,8 @@ int main(int argc, const char * argv[]) {
         int n;
         n=n+1;
         sum=sum+hypotenuse;
-        printf("sum is %f/n",sum);
-        printf("num is %d/n",n);
+//        printf("sum is %f/n",sum);
+//        printf("num is %d/n",n);
         q.x = (int) (p.x-1.5*hypotenuse*cos(angle));
         q.y = (int) (p.y-1.5*hypotenuse*sin(angle));
         
@@ -131,7 +140,7 @@ int main(int argc, const char * argv[]) {
         
         
         
-        
+        */
         
     }
     //  cvNamedWindow("ImageA",cv::WINDOW_AUTOSIZE);
