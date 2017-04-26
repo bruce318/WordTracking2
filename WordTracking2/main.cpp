@@ -12,12 +12,25 @@
 #include "stdio.h"
 #include "math.h"
 #include <iostream>
+#include <map>
 
 using namespace cv;
 
+//struct MyPointCompare
+//{
+//    bool operator() (const CvPoint& point1, const CvPoint& point2) const
+//    {
+//        return (point1.x == point2.x && point1.y == point2.y);
+//    }
+//};
+bool operator<(cv::Point const& a, cv::Point const& b)
+{
+    return (a.x < b.x) || (a.x == b.x && a.y < b.y);
+}
 //global var
 const int MAX_CORNERS=1000;
 std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
+std::map<CvPoint , int > map;
 
 //square function
 inline static double square(int a)
@@ -33,7 +46,7 @@ int main(int argc, const char * argv[]) {
     cv::glob(folder, fileNames);
     
     for(size_t i = 1 ; i < fileNames.size() - 1 ; i++) {
-    
+        std::vector<CvPoint> temp;
         const char* ch1 = fileNames[i].c_str();
         const char* ch2 = fileNames[i + 1].c_str();
         IplImage* imgA=cvLoadImage(ch1,CV_LOAD_IMAGE_GRAYSCALE);
@@ -96,55 +109,57 @@ int main(int argc, const char * argv[]) {
         
         for(int j=0;j<corner_count;j++)
         {
-            if(features_found[j]==0||feature_errors[j]>550)
-            {
-    //            printf("error is %f/n",feature_errors[i]);
-                featureList[j].push_back(CvPoint(-1 , -1));
-                continue;
-            }
-    //         printf("got it/n");
             CvPoint p0=cvPoint(cvRound(cornersA[j].x),cvRound(cornersA[j].y));
             CvPoint p1=cvPoint(cvRound(cornersB[j].x),cvRound(cornersB[j].y));
             cvLine(imgC,p0,p1,CV_RGB(255,0,0),2);
-            
-            
-            featureList[j].push_back(p0);
-            featureList[j].push_back(p1);
-            
-            
-            
-            /*
-            int line_thickness;  line_thickness=1;
-            
-            CvScalar line_color;  line_color = CV_RGB(255, 0, 0);
-            
-            CvPoint p,q;
-            p.x = (int) cornersA[i].x;
-            p.y = (int) cornersA[i].y;
-            q.x = (int) cornersB[i].x;
-            q.y = (int) cornersB[i].y;
+            if(i == 1) {
+                //not found in second frame or large error or already recorded -> mark(-1,-1)
+                if(features_found[j]==0|| feature_errors[j]>550 || map.find(p1) != map.end())
+                {
+                    featureList[j].push_back(CvPoint(-1 , -1));
+                    featureList[j].push_back(CvPoint(-1 , -1));
+                } else {
+                    //mark it in the map
+                    map.emplace(p1 , j);
+                    //record the feature's coordinate
+                    featureList[j].push_back(p0);
+                    featureList[j].push_back(p1);
+                }
+            } else {
+                //if not found in second frame or large error->record it in the temp array first and establish the lost feature by them at the end of each frame so that the total number of featureList won't change.(consistancy)
+                if(features_found[j]==0|| feature_errors[j]>550) {
+                    temp.push_back(CvPoint(-1 , -1));
+                    temp.push_back(CvPoint(-1 , -1));
+                } else if (map.find(p0) != map.end()) {//if the feature coordinate match one of the feature's end point in last frame -> connect them
+                    int index = map[p0];
+                    featureList[index].push_back(p0);
+                    featureList[index].push_back(p1);
+                } else {//new feature to track
+                    //record it in the temp array first and use them to replace the lost feature at the end of each frame
+                    temp.push_back(p0);
+                    temp.push_back(p1);
+                }
+            }
+        }
         
-            double angle;  angle= atan2((double) p.y-q.y, (double) p.x-q.x);
-            double hypotenuse; hypotenuse= sqrt(square(p.y-q.y) + square(p.x-q.x));
-            double sum;
-            int n;
-            n=n+1;
-            sum=sum+hypotenuse;
-    //        printf("sum is %f/n",sum);
-    //        printf("num is %d/n",n);
-            q.x = (int) (p.x-1.5*hypotenuse*cos(angle));
-            q.y = (int) (p.y-1.5*hypotenuse*sin(angle));
+        //replace the lost tracking point by the temp array's point(new feature to track and some invalid points). Also renew the hash map
+        int tempIt = 0;//temp iterator
+        size_t tempSize = temp.size();//mark the temp size
+        for (int k = 0 ; k < featureList.size() ; k++) {
+            //size!=i*2 means didn't renew in this frame
+            if(featureList[k].size() != i*2) {
+                featureList[k].push_back(temp[tempIt++]);
+                featureList[k].push_back(temp[tempIt++]);
+            }else {//already renewed, erace it on the map
+                map.erase(featureList[k][i*2-1]);
+            }
+            if (featureList[k][i*2].x != -1 && featureList[k][i*2].y != -1) {
+                map.emplace(featureList[k][i*2] , k);
+            }
             
-            cvLine(imgC, p, q, CV_RGB(0, 0, 250), line_thickness, CV_AA, 0);
-            
-            //  p.x = (int) (q.x+9*cos(angle+pi/4));
-            //  p.y = (int) (q.y+9*sin(angle+pi/4));
-            //  cvLine(imgC, p, q, line_color, line_thickness, CV_AA, 0);
-            //  p.x = (int) (q.x+9*cos(angle-pi/4));
-            //  p.y = (int) (q.y+9*sin(angle-pi/4));
-            //  cvLine(imgC, p, q, line_color, line_thickness, CV_AA, 0);
-            */
-            
+        }
+        if (tempIt != tempSize) {
+            std::cout<<"size not match"<< std::endl;
         }
         //For testing - search
     //    for(int i = 0 ; i < featureList.size() ; i++){
@@ -169,3 +184,35 @@ int main(int argc, const char * argv[]) {
     return 0;
     
 }
+
+/*
+ int line_thickness;  line_thickness=1;
+ 
+ CvScalar line_color;  line_color = CV_RGB(255, 0, 0);
+ 
+ CvPoint p,q;
+ p.x = (int) cornersA[i].x;
+ p.y = (int) cornersA[i].y;
+ q.x = (int) cornersB[i].x;
+ q.y = (int) cornersB[i].y;
+ 
+ double angle;  angle= atan2((double) p.y-q.y, (double) p.x-q.x);
+ double hypotenuse; hypotenuse= sqrt(square(p.y-q.y) + square(p.x-q.x));
+ double sum;
+ int n;
+ n=n+1;
+ sum=sum+hypotenuse;
+ //        printf("sum is %f/n",sum);
+ //        printf("num is %d/n",n);
+ q.x = (int) (p.x-1.5*hypotenuse*cos(angle));
+ q.y = (int) (p.y-1.5*hypotenuse*sin(angle));
+ 
+ cvLine(imgC, p, q, CV_RGB(0, 0, 250), line_thickness, CV_AA, 0);
+ 
+ //  p.x = (int) (q.x+9*cos(angle+pi/4));
+ //  p.y = (int) (q.y+9*sin(angle+pi/4));
+ //  cvLine(imgC, p, q, line_color, line_thickness, CV_AA, 0);
+ //  p.x = (int) (q.x+9*cos(angle-pi/4));
+ //  p.y = (int) (q.y+9*sin(angle-pi/4));
+ //  cvLine(imgC, p, q, line_color, line_thickness, CV_AA, 0);
+ */
