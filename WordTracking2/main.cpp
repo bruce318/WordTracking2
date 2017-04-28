@@ -28,6 +28,7 @@ bool operator<(cv::Point const& a, cv::Point const& b)
     return (a.x < b.x) || (a.x == b.x && a.y < b.y);
 }
 //global var
+int count = 0;
 const int MAX_CORNERS=1000;
 std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
 std::map<CvPoint , int > map;
@@ -114,7 +115,7 @@ int main(int argc, const char * argv[]) {
             cvLine(imgC,p0,p1,CV_RGB(255,0,0),2);
             if(i == 1) {
                 //not found in second frame or large error or already recorded -> mark(-1,-1)
-                if(features_found[j]==0|| feature_errors[j]>550 || map.find(p1) != map.end())
+                if(features_found[j]==0 || feature_errors[j]>50 || map.find(p1) != map.end())
                 {
                     featureList[j].push_back(CvPoint(-1 , -1));
                     featureList[j].push_back(CvPoint(-1 , -1));
@@ -127,13 +128,24 @@ int main(int argc, const char * argv[]) {
                 }
             } else {
                 //if not found in second frame or large error->record it in the temp array first and establish the lost feature by them at the end of each frame so that the total number of featureList won't change.(consistancy)
-                if(features_found[j]==0|| feature_errors[j]>550) {
+                if(features_found[j]==0|| feature_errors[j]>50) {
                     temp.push_back(CvPoint(-1 , -1));
                     temp.push_back(CvPoint(-1 , -1));
                 } else if (map.find(p0) != map.end()) {//if the feature coordinate match one of the feature's end point in last frame -> connect them
                     int index = map[p0];
-                    featureList[index].push_back(p0);
-                    featureList[index].push_back(p1);
+                    //avoid duplicate point
+                    if(featureList[index].size() < i*2) {
+                        count++;
+                        featureList[index].push_back(p0);
+                        featureList[index].push_back(p1);
+                        std::cout<<index<<"-"<<featureList[index].size()<<std::endl;
+                        std::cout<<"x="<<p0.x<<"y="<<p0.y<<std::endl;
+
+                    } else {
+                        temp.push_back(CvPoint(-1 , -1));
+                        temp.push_back(CvPoint(-1 , -1));
+                    }
+                    
                 } else {//new feature to track
                     //record it in the temp array first and use them to replace the lost feature at the end of each frame
                     temp.push_back(p0);
@@ -141,6 +153,8 @@ int main(int argc, const char * argv[]) {
                 }
             }
         }
+        //clear map
+        map.clear();
         
         //replace the lost tracking point by the temp array's point(new feature to track and some invalid points). Also renew the hash map
         int tempIt = 0;//temp iterator
@@ -150,10 +164,11 @@ int main(int argc, const char * argv[]) {
             if(featureList[k].size() != i*2) {
                 featureList[k].push_back(temp[tempIt++]);
                 featureList[k].push_back(temp[tempIt++]);
-            }else {//already renewed, erace it on the map
-                map.erase(featureList[k][i*2-1]);
+            } else {//already renewed, erace it on the map
+                //map.erase(featureList[k][i*2-1]);
             }
-            if (featureList[k][i*2].x != -1 && featureList[k][i*2].y != -1) {
+            //put the feature coordinate(not (-1,-1) one) into the map
+            if (featureList[k][i*2].x != -1 || featureList[k][i*2].y != -1) {
                 map.emplace(featureList[k][i*2] , k);
             }
             
@@ -161,6 +176,9 @@ int main(int argc, const char * argv[]) {
         if (tempIt != tempSize) {
             std::cout<<"size not match"<< std::endl;
         }
+        int s = temp.size();
+        std::cout<<s<<std::endl;
+        temp.clear();
         //For testing - search
     //    for(int i = 0 ; i < featureList.size() ; i++){
     //        for(int j = 0 ; j < featureList[i].size() ; j++){
