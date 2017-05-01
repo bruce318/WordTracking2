@@ -16,22 +16,37 @@
 
 using namespace cv;
 
-//struct MyPointCompare
-//{
-//    bool operator() (const CvPoint& point1, const CvPoint& point2) const
-//    {
-//        return (point1.x == point2.x && point1.y == point2.y);
-//    }
-//};
+//global var
+int count = 0;
+int cnt_total_valid_point = 0;
+const int MAX_CORNERS=1000;
+std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
+std::map<CvPoint , int > map;
+
+//functions
+
 bool operator<(cv::Point const& a, cv::Point const& b)
 {
     return (a.x < b.x) || (a.x == b.x && a.y < b.y);
 }
-//global var
-int count = 0;
-const int MAX_CORNERS=1000;
-std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
-std::map<CvPoint , int > map;
+
+//analysis: static of tracking chain
+void static_of_tracking_chain (std::vector<std::vector<CvPoint>> featureList) {
+    for (int i = 0 ; i < featureList.size() ; i++) {
+        int cnt_tracking_chain = 1;
+        for (int j = 2 ; j < featureList[i].size() ; j+=2) {
+            if (featureList[i][j].x != -1 && featureList[i][j].x == featureList[i][j-1].x && featureList[i][j].y == featureList[i][j-1].y) {
+                cnt_tracking_chain++;
+            } else {
+                if (cnt_tracking_chain != 1){
+                    std::cout<<cnt_tracking_chain<<std::endl;
+                }
+                cnt_tracking_chain = 1;
+            }
+        }
+    }
+}
+
 
 //square function
 inline static double square(int a)
@@ -43,10 +58,12 @@ inline static double square(int a)
 int main(int argc, const char * argv[]) {
     //read file
     std::vector<cv::String> fileNames;
-    std::string folder = "/Users/boyang/workspace/WordTracking2/src1";
+    std::string folder = "/Users/boyang/workspace/WordTracking2/src5";
     cv::glob(folder, fileNames);
     
     for(size_t i = 1 ; i < fileNames.size() - 1 ; i++) {
+        int keypoint_cnt = 0;
+        int cnt_tracking_feature_each_frame = 0;
         std::vector<CvPoint> temp;
         const char* ch1 = fileNames[i].c_str();
         const char* ch2 = fileNames[i + 1].c_str();
@@ -110,6 +127,7 @@ int main(int argc, const char * argv[]) {
         
         for(int j=0;j<corner_count;j++)
         {
+            keypoint_cnt++;
             CvPoint p0=cvPoint(cvRound(cornersA[j].x),cvRound(cornersA[j].y));
             CvPoint p1=cvPoint(cvRound(cornersB[j].x),cvRound(cornersB[j].y));
             cvLine(imgC,p0,p1,CV_RGB(255,0,0),2);
@@ -133,15 +151,16 @@ int main(int argc, const char * argv[]) {
                     temp.push_back(CvPoint(-1 , -1));
                 } else if (map.find(p0) != map.end()) {//if the feature coordinate match one of the feature's end point in last frame -> connect them
                     int index = map[p0];
-                    //avoid duplicate point
+                    //avoid duplicate point(not duplicate)
                     if(featureList[index].size() < i*2) {
                         count++;
+                        cnt_tracking_feature_each_frame++;
                         featureList[index].push_back(p0);
                         featureList[index].push_back(p1);
-                        std::cout<<index<<"-"<<featureList[index].size()<<std::endl;
-                        std::cout<<"x="<<p0.x<<"y="<<p0.y<<std::endl;
-
-                    } else {
+//                        std::cout<<index<<"-"<<featureList[index].size() - 2<<std::endl;
+//                        std::cout<<"x="<<p0.x<<"y="<<p0.y<<std::endl;
+                    
+                    } else {//duplicate
                         temp.push_back(CvPoint(-1 , -1));
                         temp.push_back(CvPoint(-1 , -1));
                     }
@@ -162,23 +181,38 @@ int main(int argc, const char * argv[]) {
         for (int k = 0 ; k < featureList.size() ; k++) {
             //size!=i*2 means didn't renew in this frame
             if(featureList[k].size() != i*2) {
-                featureList[k].push_back(temp[tempIt++]);
-                featureList[k].push_back(temp[tempIt++]);
-            } else {//already renewed, erace it on the map
-                //map.erase(featureList[k][i*2-1]);
+                //sometimes we set max corner to detect, but computer didn't find so many corner feature
+                if (tempIt < tempSize) {
+                    featureList[k].push_back(temp[tempIt++]);
+                    featureList[k].push_back(temp[tempIt++]);
+                } else {
+                    featureList[k].push_back(CvPoint(-1 , -1));
+                    featureList[k].push_back(CvPoint(-1 , -1));
+                    
+                }
+                
             }
             //put the feature coordinate(not (-1,-1) one) into the map
-            if (featureList[k][i*2].x != -1 || featureList[k][i*2].y != -1) {
-                map.emplace(featureList[k][i*2] , k);
+            if (featureList[k][i*2-1].x != -1 || featureList[k][i*2-1].y != -1) {
+                map.emplace(featureList[k][i*2-1] , k);
+                
             }
             
         }
         if (tempIt != tempSize) {
-            std::cout<<"size not match"<< std::endl;
+            std::cout<<"size not match:"<<tempIt<<"-"<<tempSize<<std::endl;
         }
-        int s = temp.size();
-        std::cout<<s<<std::endl;
+        //check temp size
+//        std::cout<<temp.size()<<std::endl;
+        //temp list clear
         temp.clear();
+        //check the number of tracked key point
+        std::cout<<"tracked key point:"<<cnt_tracking_feature_each_frame<<" keypointNum"<<keypoint_cnt<<std::endl;
+        //check the number of valid keypoint
+//        std::cout<<"valid key point:"<<map.size()<<std::endl;
+        cnt_total_valid_point += map.size();
+        
+        
         //For testing - search
     //    for(int i = 0 ; i < featureList.size() ; i++){
     //        for(int j = 0 ; j < featureList[i].size() ; j++){
@@ -198,7 +232,11 @@ int main(int argc, const char * argv[]) {
         
         cvWaitKey(0);
     }
-    
+//    std::cout<<"total tracked keypoint"<<count<<std::endl;
+    std::cout<<"total valid keypoint"<<cnt_total_valid_point<<std::endl;
+    //analysis: static of tracking chain
+    static_of_tracking_chain (featureList);
+
     return 0;
     
 }
