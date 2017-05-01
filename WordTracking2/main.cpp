@@ -24,10 +24,53 @@ std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>
 std::map<CvPoint , int > map;
 
 //functions
-
+//For hashmap
 bool operator<(cv::Point const& a, cv::Point const& b)
 {
     return (a.x < b.x) || (a.x == b.x && a.y < b.y);
+}
+
+CvPoint add_tolerance(int x, int y ){
+    return CvPoint(x,y);
+}
+
+bool checkFeasibility (CvPoint newPoint, int i, std::vector<CvPoint> & reuse, int reuseIt){
+    if (map.find(newPoint) != map.end()
+        && featureList[map[newPoint]].size() < i*2) {
+        int index2 = map[newPoint];
+        featureList[index2].push_back(reuse[reuseIt]);
+        featureList[index2].push_back(reuse[reuseIt + 1]);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+//second round check:check the tracking point by adding some tolerance
+void second_round_check (std::vector<CvPoint> & reuse,std::vector<CvPoint> & temp, int i){
+    for (int reuseIt = 0 ; reuseIt < reuse.size() ; reuseIt+=2) {
+        CvPoint originalPoint = reuse[reuseIt];
+        CvPoint newPoint;
+        newPoint = add_tolerance(originalPoint.x + 1, originalPoint.y);
+        if (checkFeasibility(newPoint, i, reuse, reuseIt)){
+            continue;
+        }
+        newPoint = add_tolerance(originalPoint.x - 1, originalPoint.y);
+        if (checkFeasibility(newPoint, i, reuse, reuseIt)){
+            continue;
+        }
+        newPoint = add_tolerance(originalPoint.x, originalPoint.y + 1);
+        if (checkFeasibility(newPoint, i, reuse, reuseIt)){
+            continue;
+        }
+        newPoint = add_tolerance(originalPoint.x, originalPoint.y - 1);
+        if (checkFeasibility(newPoint, i, reuse, reuseIt)){
+            continue;
+        }
+        temp.push_back(reuse[reuseIt]);
+        temp.push_back(reuse[reuseIt + 1]);
+
+    }
 }
 
 //analysis: static of tracking chain
@@ -65,6 +108,7 @@ int main(int argc, const char * argv[]) {
         int keypoint_cnt = 0;
         int cnt_tracking_feature_each_frame = 0;
         std::vector<CvPoint> temp;
+        std::vector<CvPoint> reuse;
         const char* ch1 = fileNames[i].c_str();
         const char* ch2 = fileNames[i + 1].c_str();
         IplImage* imgA=cvLoadImage(ch1,CV_LOAD_IMAGE_GRAYSCALE);
@@ -166,12 +210,16 @@ int main(int argc, const char * argv[]) {
                     }
                     
                 } else {//new feature to track
-                    //record it in the temp array first and use them to replace the lost feature at the end of each frame
-                    temp.push_back(p0);
-                    temp.push_back(p1);
+                    //record it in the reuse array then use some tolerance to check again
+                    reuse.push_back(p0);
+                    reuse.push_back(p1);
                 }
             }
         }
+        
+        //second round add tolerance seek tracking point
+        second_round_check(reuse, temp, i);
+        
         //clear map
         map.clear();
         
