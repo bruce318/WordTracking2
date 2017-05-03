@@ -78,7 +78,11 @@ void static_of_tracking_chain (std::vector<std::vector<CvPoint>> featureList) {
     for (int i = 0 ; i < featureList.size() ; i++) {
         int cnt_tracking_chain = 1;
         for (int j = 2 ; j < featureList[i].size() ; j+=2) {
-            if (featureList[i][j].x != -1 && featureList[i][j].x == featureList[i][j-1].x && featureList[i][j].y == featureList[i][j-1].y) {
+            if (featureList[i][j].x != -1
+                && (featureList[i][j].x >= featureList[i][j-1].x-1
+                    && featureList[i][j].x <= featureList[i][j-1].x+1)
+                && (featureList[i][j].y >= featureList[i][j-1].y-1)
+                    && featureList[i][j].y <= featureList[i][j-1].y+1) {
                 cnt_tracking_chain++;
             } else {
                 if (cnt_tracking_chain != 1){
@@ -101,7 +105,7 @@ inline static double square(int a)
 int main(int argc, const char * argv[]) {
     //read file
     std::vector<cv::String> fileNames;
-    std::string folder = "/Users/boyang/workspace/WordTracking2/src5";
+    std::string folder = "/Users/boyang/workspace/WordTracking2/src1";
     cv::glob(folder, fileNames);
     
     for(size_t i = 1 ; i < fileNames.size() - 1 ; i++) {
@@ -219,6 +223,7 @@ int main(int argc, const char * argv[]) {
         
         //second round add tolerance seek tracking point
         second_round_check(reuse, temp, i);
+        reuse.clear();
         
         //clear map
         map.clear();
@@ -255,7 +260,7 @@ int main(int argc, const char * argv[]) {
         //temp list clear
         temp.clear();
         //check the number of tracked key point
-        std::cout<<"tracked key point:"<<cnt_tracking_feature_each_frame<<" keypointNum"<<keypoint_cnt<<std::endl;
+//        std::cout<<"tracked key point:"<<cnt_tracking_feature_each_frame<<" keypointNum"<<keypoint_cnt<<std::endl;
         //check the number of valid keypoint
 //        std::cout<<"valid key point:"<<map.size()<<std::endl;
         cnt_total_valid_point += map.size();
