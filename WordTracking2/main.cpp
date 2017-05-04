@@ -103,6 +103,10 @@ inline static double square(int a)
 
 
 int main(int argc, const char * argv[]) {
+    //some var
+    TermCriteria termcrit(TermCriteria::COUNT|TermCriteria::EPS,20,0.03);
+    Size subPixWinSize(10,10), winSize(31,31);
+    
     //read file
     std::vector<cv::String> fileNames;
     String folder = "/Users/boyang/workspace/WordTracking2/src2";
@@ -114,7 +118,7 @@ int main(int argc, const char * argv[]) {
         int keypoint_cnt = 0;
         //count the numbers of features which are in track
         int cnt_tracking_feature_each_frame = 0;
-        //put the duplicate key point
+        //put the duplicate and new key point
         std::vector<CvPoint> temp;
         //new feature to track record it in the reuse array then use some tolerance to check again
         std::vector<CvPoint> reuse;
@@ -147,6 +151,13 @@ int main(int argc, const char * argv[]) {
                             0.04
                             );
         
+        cornerSubPix(imgPre,
+                     featuresPre,
+                     subPixWinSize,
+                     Size(-1,-1),
+                     termcrit
+                     );
+        
         //output the status and errors of feature point
         std::vector<uchar> status;
         std::vector<float> error;
@@ -163,9 +174,13 @@ int main(int argc, const char * argv[]) {
         for(int j=0;j<corner_count;j++)
         {
             keypoint_cnt++;
+            //start point and end point of the optical flow
             CvPoint p0=cvPoint(cvRound(featuresPre[j].x),cvRound(featuresPre[j].y));
             CvPoint p1=cvPoint(cvRound(featuresCur[j].x),cvRound(featuresCur[j].y));
+            //draw line of the optical flow
             line(imgShow,p0,p1,CV_RGB(255,0,0),2);
+            
+            //if is the first frame
             if(i == 1) {
                 //not found in second frame or large error or already recorded -> mark(-1,-1)
                 if(status[j]==0 || error[j]>50 || map.find(p1) != map.end())
@@ -179,6 +194,7 @@ int main(int argc, const char * argv[]) {
                     featureList[j].push_back(p0);
                     featureList[j].push_back(p1);
                 }
+            //not the first frame
             } else {
                 //if not found in second frame or large error->record it in the temp array first and establish the lost feature by them at the end of each frame so that the total number of featureList won't change.(consistancy)
                 if(status[j]==0|| error[j]>50) {
@@ -261,15 +277,9 @@ int main(int argc, const char * argv[]) {
     //            }
     //        }
     //    }
-    //      cvNamedWindow("ImageA",cv::WINDOW_AUTOSIZE);
-    //      cvNamedWindow("ImageB",cv::WINDOW_AUTOSIZE);
+
         namedWindow("LKpyr_opticalFlow");
-    //      cvShowImage("ImageA",imgA);
-    //      cvShowImage("ImageB",imgB);
         imshow("LKpyr_opticalFlow",imgShow);
-    //    cvSaveImage( "/Users/boyang/Downloads/boyang/1.jpg", imgC );
-        
-        
         cvWaitKey(0);
     }
 //    std::cout<<"total tracked keypoint"<<count<<std::endl;
