@@ -112,51 +112,30 @@ int main(int argc, const char * argv[]) {
     for(int i = 1 ; i < fileNames.size() - 1 ; i++) {
         //counting all output key point both good and bad one
         int keypoint_cnt = 0;
-        //
+        //count the numbers of features which are in track
         int cnt_tracking_feature_each_frame = 0;
+        //put the duplicate key point
         std::vector<CvPoint> temp;
+        //new feature to track record it in the reuse array then use some tolerance to check again
         std::vector<CvPoint> reuse;
-        
-//        const char* ch1 = fileNames[i].c_str();
-//        const char* ch2 = fileNames[i + 1].c_str();
-//        IplImage* imgA=cvLoadImage(ch1,CV_LOAD_IMAGE_GRAYSCALE);
-//        IplImage* imgB=cvLoadImage(ch2,CV_LOAD_IMAGE_GRAYSCALE);
         
         //load image
         Mat imgPre = imread(fileNames[i], IMREAD_GRAYSCALE );
         resize(imgPre, imgPre, Size(640, 480));
         Mat imgCur = imread(fileNames[i+1], IMREAD_GRAYSCALE);
         resize(imgCur, imgCur, Size(640, 480));
-        
-//        CvSize img_sz=cvGetSize(imgA);
-        int win_size=10;
-        
-//        IplImage* imgC=cvLoadImage(ch1,CV_LOAD_IMAGE_UNCHANGED);
+        //load a color image to show
         Mat imgShow = imread(fileNames[i], IMREAD_COLOR);
         resize(imgShow, imgShow, Size(640, 480));
         
-//        IplImage* eig_image=cvCreateImage(img_sz,IPL_DEPTH_32F,1);
-//        IplImage* tmp_image=cvCreateImage(img_sz,IPL_DEPTH_32F,1);
-        
         int corner_count=MAX_CORNERS;
-//        CvPoint2D32f* cornersA=new CvPoint2D32f[MAX_CORNERS];
+        //set it later
+        int win_size;
+        //vector to put output feature points
         std::vector<Point2f> featuresPre(MAX_CORNERS);
         std::vector<Point2f> featuresCur(MAX_CORNERS);
         
-//        cvGoodFeaturesToTrack(//检测角点
-//                              imgA,
-//                              eig_image,//两个临时图像
-//                              tmp_image,
-//                              cornersA,//函数的输出，即检测到的角点数组
-//                              &corner_count,//最大角点数，调用函数后返回的角点的数目
-//                              0.01,
-//                              5.0,//返回角点之间的最短距离不应小于min_distance
-//                              0,
-//                              3,
-//                              0,
-//                              0.04
-//                              );
-        
+        //find good features to track
         goodFeaturesToTrack(imgPre,
                             featuresPre,
                             MAX_CORNERS,
@@ -168,47 +147,17 @@ int main(int argc, const char * argv[]) {
                             0.04
                             );
         
-//        cvFindCornerSubPix(//根据上一步精确角点位置，确定亚像素角点
-//                           imgA,
-//                           cornersA,//整数值的像素位置
-//                           corner_count,//角点数目
-//                           cvSize(win_size,win_size),//等式产生窗口的尺寸
-//                           cvSize(-1,-1),//禁区，不需要时设置cvSize（-1,-1）
-//                           cvTermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03)
-//                           );
-        
-        char features_found[MAX_CORNERS];
-        float feature_errors[MAX_CORNERS];
-        
+        //output the status and errors of feature point
         std::vector<uchar> status;
-        std::vector<float> err;
+        std::vector<float> error;
         
-//        CvSize pyr_sz=cvSize(imgA->width+8,imgB->height/3);
-//        IplImage* pyrA=cvCreateImage(pyr_sz,IPL_DEPTH_8U,1);
-//        IplImage* pyrB=cvCreateImage(pyr_sz,IPL_DEPTH_8U,1);
-//        CvPoint2D32f* cornersB=new CvPoint2D32f[MAX_CORNERS];
-//        cvCalcOpticalFlowPyrLK(
-//                               imgA,//初始图像
-//                               imgB,//最终图像
-//                               pyrA,//申请存放两幅输入图像金字塔的缓存，大小至少为(img.width-8)*img.height/3字节
-//                               pyrB,
-//                               cornersA,//用于寻找运动的点
-//                               cornersB,//存放featureA中点的新的位置
-//                               corner_count,//featureA中点的数目
-//                               cvSize(win_size,win_size),
-//                               5,//金字塔层数
-//                               features_found,//对应点是否在第二副图像中发现
-//                               feature_errors,
-//                               cvTermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.3),
-//                               0
-//                               );
-        
+        //optical flow
         calcOpticalFlowPyrLK(imgPre,
                              imgCur,
                              featuresPre,
                              featuresCur,
                              status,
-                             err
+                             error
                              );
         
         for(int j=0;j<corner_count;j++)
@@ -219,7 +168,7 @@ int main(int argc, const char * argv[]) {
             line(imgShow,p0,p1,CV_RGB(255,0,0),2);
             if(i == 1) {
                 //not found in second frame or large error or already recorded -> mark(-1,-1)
-                if(features_found[j]==0 || feature_errors[j]>50 || map.find(p1) != map.end())
+                if(status[j]==0 || error[j]>50 || map.find(p1) != map.end())
                 {
                     featureList[j].push_back(CvPoint(-1 , -1));
                     featureList[j].push_back(CvPoint(-1 , -1));
@@ -232,7 +181,7 @@ int main(int argc, const char * argv[]) {
                 }
             } else {
                 //if not found in second frame or large error->record it in the temp array first and establish the lost feature by them at the end of each frame so that the total number of featureList won't change.(consistancy)
-                if(features_found[j]==0|| feature_errors[j]>50) {
+                if(status[j]==0|| error[j]>50) {
                     temp.push_back(CvPoint(-1 , -1));
                     temp.push_back(CvPoint(-1 , -1));
                 } else if (map.find(p0) != map.end()) {//if the feature coordinate match one of the feature's end point in last frame -> connect them
