@@ -17,17 +17,36 @@
 using namespace cv;
 
 //global var
-int count = 0;
-int cnt_total_valid_point = 0;
 const int MAX_CORNERS = 1000;
+const int TOLERENCE_WINSIZE = 3;//half of the winsize eg. 3 means winsize is 7
+const int SSD_WINSIZE = 5;//half of the winsize eg. 5 means winsize is 11
+const double SSD_THRESHOLD = 2;
+const Size imgSize = Size(640, 480);
+
+
+
+int count = 0;
+int cntTolerancePerformance = 0;
+int cnt_total_valid_point = 0;
+
+Mat imgPrePre;
+Mat imgPre;
+Mat imgCur;
 std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
 std::map<CvPoint , int > map;
+std::vector<CvPoint> reuse2;
 
 //functions
 //For hashmap
 bool operator<(cv::Point const& a, cv::Point const& b)
 {
     return (a.x < b.x) || (a.x == b.x && a.y < b.y);
+}
+
+//square function
+inline static double square(int a)
+{
+    return a * a;
 }
 
 CvPoint add_tolerance(int x, int y ){
@@ -40,6 +59,7 @@ bool checkFeasibility (CvPoint newPoint, int i, std::vector<CvPoint> & reuse, in
         int index2 = map[newPoint];
         featureList[index2].push_back(reuse[reuseIt]);
         featureList[index2].push_back(reuse[reuseIt + 1]);
+        cntTolerancePerformance++;
         return true;
     } else {
         return false;
@@ -67,9 +87,95 @@ void second_round_check (std::vector<CvPoint> & reuse,std::vector<CvPoint> & tem
         if (checkFeasibility(newPoint, i, reuse, reuseIt)){
             continue;
         }
-        temp.push_back(reuse[reuseIt]);
-        temp.push_back(reuse[reuseIt + 1]);
+        //didn't find a point to continue tracking even add 1 pixel tolerence
+        //first frame no need third round check since don't have previous frame
+        if(i == 1){
+            temp.push_back(reuse[reuseIt]);
+            temp.push_back(reuse[reuseIt + 1]);
+        } else {//ready to process third round check
+            reuse2.push_back(reuse[reuseIt]);
+            reuse2.push_back(reuse[reuseIt + 1]);
+        }
 
+    }
+}
+
+bool checkOutOfBound (CvPoint thisPoint) {
+    if(thisPoint.x - SSD_WINSIZE < 0
+       || thisPoint.x + SSD_WINSIZE >= imgSize.width
+       || thisPoint.y -SSD_WINSIZE < 0
+       || thisPoint.y + SSD_WINSIZE >= imgSize.height
+       ) {
+        return true;
+    }
+    return false;
+}
+
+int ssd(CvPoint firstPoint, CvPoint secondPoint, int flag){
+    Mat img1 = imgPrePre;
+    Mat img2;
+    if(flag == 1) {
+        img2 = imgPre;
+    } else if (flag == 2) {
+        img2 = imgCur;
+    }
+    int sum = 0;
+    if(checkOutOfBound(firstPoint) || checkOutOfBound(secondPoint)){
+        return -1;
+    }
+    for(int y = - SSD_WINSIZE ; y <= SSD_WINSIZE ; y++) {
+        for(int x = -SSD_WINSIZE ; x <= SSD_WINSIZE ; x++) {
+            sum += square(img1.at<int>(firstPoint.x + x, firstPoint.y + y) - img2.at<int>(secondPoint.x + x, secondPoint.y + y));
+        }
+    }
+    return sum;
+}
+
+void thirdRoundCheck(int i, std::vector<CvPoint> & temp) {
+    //loop through list:reuse2 which are non tracking new points. check them whether can they connect to the tracking chain
+    for(int reuse2It = 0 ; reuse2It < reuse2.size() ; reuse2It+=2) {
+        CvPoint startPoint = reuse2[reuse2It];
+        CvPoint endPoint = reuse2[reuse2It + 1];
+        double minRatio = DBL_MAX;
+        int indexToBeUse = -1;
+        for(int dy = startPoint.y - TOLERENCE_WINSIZE ; dy <= startPoint.y + TOLERENCE_WINSIZE ; dy++ ) {
+            for (int dx = startPoint.x - TOLERENCE_WINSIZE ; dx <= startPoint.x + TOLERENCE_WINSIZE ; dx++) {
+                CvPoint pointWithTolerance = CvPoint(dx,dy);//also the end point in the previous frame
+                CvPoint preStartPoint;
+                if(map.find(pointWithTolerance) != map.end()) {
+                    int index3 = map[pointWithTolerance];
+                    int size = featureList[index3].size();
+                    //check if it is the right one
+                    if (featureList[index3][size - 1].x == pointWithTolerance.x
+                        && featureList[index3][size - 1].y == pointWithTolerance.y) {
+                        //index of the start point in the previous frame is size - 2
+                        preStartPoint = featureList[index3][size - 2];
+                        int U_0 = ssd(preStartPoint, startPoint, 1);
+                        int U_1 = ssd(preStartPoint, endPoint, 2);
+                        double ratio = DBL_MAX;
+                        if(U_0 != -1 && U_1 != -1) {
+                            ratio = U_1/U_0;
+                        }
+                        if ( ratio < SSD_THRESHOLD && ratio < minRatio) {
+                            minRatio = ratio;
+                            indexToBeUse = index3;
+                        }
+                        
+                    } else {
+                        std::cout<<"not find the right point in previous frame"<<std::endl;
+                    }
+                    
+                }
+            }
+        }
+        //if been modified -> have good matches. check whether it already have tracking point or not
+        if (minRatio != DBL_MAX && featureList[indexToBeUse].size() < i*2) {
+            featureList[indexToBeUse].push_back(startPoint);
+            featureList[indexToBeUse].push_back(endPoint);
+        } else {
+            temp.push_back(startPoint);
+            temp.push_back(endPoint);
+        }
     }
 }
 
@@ -95,12 +201,6 @@ void static_of_tracking_chain (std::vector<std::vector<CvPoint>> featureList) {
 }
 
 
-//square function
-inline static double square(int a)
-{
-    return a * a;
-}
-
 
 int main(int argc, const char * argv[]) {
     //some var
@@ -109,7 +209,7 @@ int main(int argc, const char * argv[]) {
     
     //read file
     std::vector<cv::String> fileNames;
-    String folder = "/Users/boyang/workspace/WordTracking2/src2";
+    String folder = "/Users/boyang/workspace/WordTracking2/src5";
     cv::glob(folder, fileNames);
     
     //loop through all the images in the file
@@ -124,13 +224,13 @@ int main(int argc, const char * argv[]) {
         std::vector<CvPoint> reuse;
         
         //load image
-        Mat imgPre = imread(fileNames[i], IMREAD_GRAYSCALE );
-        resize(imgPre, imgPre, Size(640, 480));
-        Mat imgCur = imread(fileNames[i+1], IMREAD_GRAYSCALE);
-        resize(imgCur, imgCur, Size(640, 480));
+        imgPre = imread(fileNames[i], IMREAD_GRAYSCALE );
+        resize(imgPre, imgPre, imgSize);
+        imgCur = imread(fileNames[i+1], IMREAD_GRAYSCALE);
+        resize(imgCur, imgCur, imgSize);
         //load a color image to show
         Mat imgShow = imread(fileNames[i], IMREAD_COLOR);
-        resize(imgShow, imgShow, Size(640, 480));
+        resize(imgShow, imgShow, imgSize);
         
         int corner_count=MAX_CORNERS;
         //set it later
@@ -227,6 +327,10 @@ int main(int argc, const char * argv[]) {
         //second round add tolerance seek tracking point
         second_round_check(reuse, temp, i);
         reuse.clear();
+        if (i > 1) {
+            thirdRoundCheck(i, temp);
+            reuse2.clear();
+        }
         
         //clear map
         map.clear();
@@ -260,8 +364,15 @@ int main(int argc, const char * argv[]) {
         }
         //check temp size
 //        std::cout<<temp.size()<<std::endl;
-        //temp list clear
+        
+        //copy to previous frame
+        imgPre.copyTo(imgPrePre);
+        //clear
         temp.clear();
+        imgPre.release();
+        imgCur.release();
+        
+        
         //check the number of tracked key point
 //        std::cout<<"tracked key point:"<<cnt_tracking_feature_each_frame<<" keypointNum"<<keypoint_cnt<<std::endl;
         //check the number of valid keypoint
@@ -284,8 +395,10 @@ int main(int argc, const char * argv[]) {
     }
 //    std::cout<<"total tracked keypoint"<<count<<std::endl;
     std::cout<<"total valid keypoint"<<cnt_total_valid_point<<std::endl;
+    
     //analysis: static of tracking chain
-    static_of_tracking_chain (featureList);
+    //static_of_tracking_chain (featureList);
+    std::cout<<"add torlerance"<<cntTolerancePerformance<<std::endl;
 
     return 0;
     
