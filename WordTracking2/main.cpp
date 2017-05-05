@@ -18,13 +18,13 @@ using namespace cv;
 
 //global var
 const int MAX_CORNERS = 1000;
-const int TOLERENCE_WINSIZE = 3;//half of the winsize eg. 3 means winsize is 7
+const int TOLERENCE_WINSIZE = 4;//half of the winsize eg. 3 means winsize is 7
 const int SSD_WINSIZE = 5;//half of the winsize eg. 5 means winsize is 11
-const double SSD_THRESHOLD = 2;
+const double SSD_THRESHOLD = 3;
 const Size imgSize = Size(640, 480);
 
 
-
+int cntAddByTolerance = 0;
 int count = 0;
 int cntTolerancePerformance = 0;
 int cnt_total_valid_point = 0;
@@ -145,25 +145,33 @@ void thirdRoundCheck(int i, std::vector<CvPoint> & temp) {
                 if(map.find(pointWithTolerance) != map.end()) {
                     int index3 = map[pointWithTolerance];
                     int size = featureList[index3].size();
-                    //check if it is the right one
-                    if (featureList[index3][size - 1].x == pointWithTolerance.x
-                        && featureList[index3][size - 1].y == pointWithTolerance.y) {
-                        //index of the start point in the previous frame is size - 2
-                        preStartPoint = featureList[index3][size - 2];
-                        int U_0 = ssd(preStartPoint, startPoint, 1);
-                        int U_1 = ssd(preStartPoint, endPoint, 2);
-                        double ratio = DBL_MAX;
-                        if(U_0 != -1 && U_1 != -1) {
-                            ratio = U_1/U_0;
+                    //check whether already have tracking chain or not
+                    if (size < i*2){
+                        //check if it is the right one
+                        if (featureList[index3][size - 1].x == pointWithTolerance.x
+                            && featureList[index3][size - 1].y == pointWithTolerance.y) {
+                            //index of the start point in the previous frame is size - 2
+                            preStartPoint = featureList[index3][size - 2];
+                            int U_0 = ssd(preStartPoint, pointWithTolerance, 1);
+                            int U_1 = ssd(preStartPoint, endPoint, 2);
+                            double ratio = DBL_MAX;
+                            if(U_0 == 0) {
+                                if(U_1 == 0) {
+                                    ratio = 1;
+                                }
+                            } else if (U_0 != -1 && U_1 != -1) {
+                                ratio = U_1/U_0;
+                            }
+                            if ( ratio < SSD_THRESHOLD && ratio < minRatio) {
+                                minRatio = ratio;
+                                indexToBeUse = index3;
+                            }
+                            
+                        } else {
+                            std::cout<<"not find the right point in previous frame"<<std::endl;
                         }
-                        if ( ratio < SSD_THRESHOLD && ratio < minRatio) {
-                            minRatio = ratio;
-                            indexToBeUse = index3;
-                        }
-                        
-                    } else {
-                        std::cout<<"not find the right point in previous frame"<<std::endl;
                     }
+                    
                     
                 }
             }
@@ -172,6 +180,7 @@ void thirdRoundCheck(int i, std::vector<CvPoint> & temp) {
         if (minRatio != DBL_MAX && featureList[indexToBeUse].size() < i*2) {
             featureList[indexToBeUse].push_back(startPoint);
             featureList[indexToBeUse].push_back(endPoint);
+            cntAddByTolerance++;
         } else {
             temp.push_back(startPoint);
             temp.push_back(endPoint);
@@ -365,6 +374,7 @@ int main(int argc, const char * argv[]) {
         //check temp size
 //        std::cout<<temp.size()<<std::endl;
         
+        imgPrePre.release();
         //copy to previous frame
         imgPre.copyTo(imgPrePre);
         //clear
@@ -399,6 +409,7 @@ int main(int argc, const char * argv[]) {
     //analysis: static of tracking chain
     //static_of_tracking_chain (featureList);
     std::cout<<"add torlerance"<<cntTolerancePerformance<<std::endl;
+    std::cout<<"addByTolerance"<<cntAddByTolerance<<std::endl;
 
     return 0;
     
