@@ -17,11 +17,11 @@
 using namespace cv;
 
 //global var
-const int MAX_CORNERS = 1000;
-const int TOLERENCE_WINSIZE = 4;//half of the winsize eg. 3 means winsize is 7
-const int SSD_WINSIZE = 5;//half of the winsize eg. 5 means winsize is 11
+const int MAX_CORNERS = 2000;
+const int TOLERENCE_WINSIZE = 3;//half of the winsize eg. 3 means winsize is 7
+const int SSD_WINSIZE = 3;//half of the winsize eg. 5 means winsize is 11
 const double SSD_THRESHOLD = 3;
-const Size imgSize = Size(640, 480);
+const Size imgSize = Size(640,480);//640, 480
 
 
 int cntAddByTolerance = 0;
@@ -35,6 +35,7 @@ Mat imgCur;
 std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
 std::map<CvPoint , int > map;
 std::vector<CvPoint> reuse2;
+
 
 //functions
 //For hashmap
@@ -53,13 +54,15 @@ CvPoint add_tolerance(int x, int y ){
     return CvPoint(x,y);
 }
 
-bool checkFeasibility (CvPoint newPoint, int i, std::vector<CvPoint> & reuse, int reuseIt){
+bool checkFeasibility (CvPoint newPoint, int i, std::vector<CvPoint> & reuse, int reuseIt, std::vector<int> & trackingTableThisFrame){
     if (map.find(newPoint) != map.end()
         && featureList[map[newPoint]].size() < i*2) {
         int index2 = map[newPoint];
         featureList[index2].push_back(reuse[reuseIt]);
         featureList[index2].push_back(reuse[reuseIt + 1]);
         cntTolerancePerformance++;
+        //keep record on the tracking table
+        trackingTableThisFrame[index2] = 1;
         return true;
     } else {
         return false;
@@ -67,24 +70,24 @@ bool checkFeasibility (CvPoint newPoint, int i, std::vector<CvPoint> & reuse, in
 }
 
 //second round check:check the tracking point by adding some tolerance
-void second_round_check (std::vector<CvPoint> & reuse,std::vector<CvPoint> & temp, int i){
+void second_round_check (std::vector<CvPoint> & reuse,std::vector<CvPoint> & temp, int i, std::vector<int> & trackingTableThisFrame){
     for (int reuseIt = 0 ; reuseIt < reuse.size() ; reuseIt+=2) {
         CvPoint originalPoint = reuse[reuseIt];
         CvPoint newPoint;
         newPoint = add_tolerance(originalPoint.x + 1, originalPoint.y);
-        if (checkFeasibility(newPoint, i, reuse, reuseIt)){
+        if (checkFeasibility(newPoint, i, reuse, reuseIt, trackingTableThisFrame)){
             continue;
         }
         newPoint = add_tolerance(originalPoint.x - 1, originalPoint.y);
-        if (checkFeasibility(newPoint, i, reuse, reuseIt)){
+        if (checkFeasibility(newPoint, i, reuse, reuseIt, trackingTableThisFrame)){
             continue;
         }
         newPoint = add_tolerance(originalPoint.x, originalPoint.y + 1);
-        if (checkFeasibility(newPoint, i, reuse, reuseIt)){
+        if (checkFeasibility(newPoint, i, reuse, reuseIt, trackingTableThisFrame)){
             continue;
         }
         newPoint = add_tolerance(originalPoint.x, originalPoint.y - 1);
-        if (checkFeasibility(newPoint, i, reuse, reuseIt)){
+        if (checkFeasibility(newPoint, i, reuse, reuseIt, trackingTableThisFrame)){
             continue;
         }
         //didn't find a point to continue tracking even add 1 pixel tolerence
@@ -125,13 +128,18 @@ int ssd(CvPoint firstPoint, CvPoint secondPoint, int flag){
     }
     for(int y = - SSD_WINSIZE ; y <= SSD_WINSIZE ; y++) {
         for(int x = -SSD_WINSIZE ; x <= SSD_WINSIZE ; x++) {
-            sum += square(img1.at<int>(firstPoint.x + x, firstPoint.y + y) - img2.at<int>(secondPoint.x + x, secondPoint.y + y));
+            Scalar intensity1 = img1.at<uchar>(firstPoint.x + x, firstPoint.y + y);
+            Scalar intensity2 = img2.at<uchar>(secondPoint.x + x, secondPoint.y + y);
+            
+            sum += square(intensity1.val[0] - intensity2.val[0]);
+            //check
+            //std::cout<<"1:"<<intensity1.val[0]<<" 2:"<<intensity2.val[0]<<std::endl;
         }
     }
     return sum;
 }
 
-void thirdRoundCheck(int i, std::vector<CvPoint> & temp) {
+void thirdRoundCheck(int i, std::vector<CvPoint> & temp, std::vector<int> & trackingTableThisFrame) {
     //loop through list:reuse2 which are non tracking new points. check them whether can they connect to the tracking chain
     for(int reuse2It = 0 ; reuse2It < reuse2.size() ; reuse2It+=2) {
         CvPoint startPoint = reuse2[reuse2It];
@@ -181,6 +189,8 @@ void thirdRoundCheck(int i, std::vector<CvPoint> & temp) {
             featureList[indexToBeUse].push_back(startPoint);
             featureList[indexToBeUse].push_back(endPoint);
             cntAddByTolerance++;
+            trackingTableThisFrame[indexToBeUse] = 1;
+            
         } else {
             temp.push_back(startPoint);
             temp.push_back(endPoint);
@@ -209,12 +219,29 @@ void static_of_tracking_chain (std::vector<std::vector<CvPoint>> featureList) {
     }
 }
 
+//analysis: static of tracking chain by tracking table
+void analysis(std::vector<std::vector<int>> trackingTable) {
+    for (int j = 0 ; j < trackingTable[0].size() ; j++) {
+        int cntChainLength = 1;//start from 1. since one keypoint count as 1
+        for (int i = 0 ; i < trackingTable.size() ; i++) {
+            if(trackingTable[i][j] == 1) {
+                cntChainLength++;
+            } else {
+                if(cntChainLength != 1){//don't output the chain length == 1
+                    std::cout<<cntChainLength<<std::endl;
+                }
+                cntChainLength = 1;
+            }
+        }
+    }
+}
 
 
 int main(int argc, const char * argv[]) {
     //some var
     TermCriteria termcrit(TermCriteria::COUNT|TermCriteria::EPS,20,0.03);
     Size subPixWinSize(10,10), winSize(31,31);
+    std::vector<std::vector<int> > trackingTable;//a table to keep a record of tracking
     
     //read file
     std::vector<cv::String> fileNames;
@@ -231,6 +258,8 @@ int main(int argc, const char * argv[]) {
         std::vector<CvPoint> temp;
         //new feature to track record it in the reuse array then use some tolerance to check again
         std::vector<CvPoint> reuse;
+        //create tracking table for this frame
+        std::vector<int> trackingTableThisFrame(MAX_CORNERS, 0);
         
         //load image
         imgPre = imread(fileNames[i], IMREAD_GRAYSCALE );
@@ -319,6 +348,8 @@ int main(int argc, const char * argv[]) {
                         featureList[index].push_back(p1);
 //                        std::cout<<index<<"-"<<featureList[index].size() - 2<<std::endl;
 //                        std::cout<<"x="<<p0.x<<"y="<<p0.y<<std::endl;
+                        //record on the tracking table
+                        trackingTableThisFrame[index] = 1;
                     
                     } else {//duplicate
                         temp.push_back(CvPoint(-1 , -1));
@@ -334,10 +365,10 @@ int main(int argc, const char * argv[]) {
         }
         
         //second round add tolerance seek tracking point
-        second_round_check(reuse, temp, i);
+        second_round_check(reuse, temp, i, trackingTableThisFrame);
         reuse.clear();
         if (i > 1) {
-            thirdRoundCheck(i, temp);
+            thirdRoundCheck(i, temp, trackingTableThisFrame);
             reuse2.clear();
         }
         
@@ -374,11 +405,15 @@ int main(int argc, const char * argv[]) {
         //check temp size
 //        std::cout<<temp.size()<<std::endl;
         
+        //push back the tracking table for this frame
+        trackingTable.push_back(trackingTableThisFrame);
+        
         imgPrePre.release();
         //copy to previous frame
         imgPre.copyTo(imgPrePre);
         //clear
         temp.clear();
+        trackingTableThisFrame.clear();
         imgPre.release();
         imgCur.release();
         
@@ -401,15 +436,21 @@ int main(int argc, const char * argv[]) {
 
         namedWindow("LKpyr_opticalFlow");
         imshow("LKpyr_opticalFlow",imgShow);
-        cvWaitKey(0);
+        cvWaitKey(20);
     }
-//    std::cout<<"total tracked keypoint"<<count<<std::endl;
-    std::cout<<"total valid keypoint"<<cnt_total_valid_point<<std::endl;
+
     
     //analysis: static of tracking chain
     //static_of_tracking_chain (featureList);
-    std::cout<<"add torlerance"<<cntTolerancePerformance<<std::endl;
+
+    
+    //analysis: static of tracking chain by tracking table
+    analysis(trackingTable);
+    
+    std::cout<<"addBy1PixelTorlerance"<<cntTolerancePerformance<<std::endl;
     std::cout<<"addByTolerance"<<cntAddByTolerance<<std::endl;
+    //    std::cout<<"total tracked keypoint"<<count<<std::endl;
+    std::cout<<"total valid keypoint"<<cnt_total_valid_point<<std::endl;
 
     return 0;
     
