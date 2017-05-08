@@ -18,9 +18,9 @@ using namespace cv;
 
 //global var
 const int MAX_CORNERS = 2000;
-const int TOLERENCE_WINSIZE = 3;//half of the winsize eg. 3 means winsize is 7
+const int TOLERENCE_WINSIZE = 10;//half of the winsize eg. 3 means winsize is 7
 const int SSD_WINSIZE = 3;//half of the winsize eg. 5 means winsize is 11
-const double SSD_THRESHOLD = 3;
+const double SSD_THRESHOLD = 4;
 const Size imgSize = Size(640,480);//640, 480
 
 
@@ -245,7 +245,7 @@ int main(int argc, const char * argv[]) {
     
     //read file
     std::vector<cv::String> fileNames;
-    String folder = "/Users/boyang/workspace/WordTracking2/src5";
+    String folder = "/Users/boyang/workspace/WordTracking2/src6";
     cv::glob(folder, fileNames);
     
     //loop through all the images in the file
@@ -436,7 +436,7 @@ int main(int argc, const char * argv[]) {
 
         namedWindow("LKpyr_opticalFlow");
         imshow("LKpyr_opticalFlow",imgShow);
-        cvWaitKey(20);
+        cvWaitKey(3);
     }
 
     
