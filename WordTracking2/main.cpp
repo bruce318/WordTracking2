@@ -29,6 +29,8 @@ int count = 0;
 int cntTolerancePerformance = 0;
 int cnt_total_valid_point = 0;
 
+Scalar chainLengthColor[8] = {Scalar(0,0,255),Scalar(0,153,255),Scalar(0,255,255),Scalar(0,255,0),Scalar(255,255,0),Scalar(255,0,0),Scalar(255,0,153),Scalar(0,0,0)};//rainbow order
+
 Mat imgPrePre;
 Mat imgPre;
 Mat imgCur;
@@ -317,7 +319,7 @@ int main(int argc, const char * argv[]) {
             CvPoint p0=cvPoint(cvRound(featuresPre[j].x),cvRound(featuresPre[j].y));
             CvPoint p1=cvPoint(cvRound(featuresCur[j].x),cvRound(featuresCur[j].y));
             //draw line of the optical flow
-            line(imgShow,p0,p1,CV_RGB(255,0,0),2);
+//            line(imgShow,p0,p1,CV_RGB(255,0,0),2);
             
             //if is the first frame
             if(i == 1) {
@@ -404,8 +406,12 @@ int main(int argc, const char * argv[]) {
                 
             }
             //put the feature coordinate(not (-1,-1) one) into the map
+            //and draw circles on the feature points. Color depends on the chain length
             if (featureList[k][i*2-1].x != -1 || featureList[k][i*2-1].y != -1) {
                 map.emplace(featureList[k][i*2-1] , k);
+                int colorIndex = trackingTableThisFrame[k]>8?8:trackingTableThisFrame[k];
+                Scalar circleColor = chainLengthColor[colorIndex];
+                circle(imgShow, featureList[k][i*2 - 2], 3, circleColor, 1);
                 
             }
             
