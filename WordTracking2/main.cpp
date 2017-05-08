@@ -20,7 +20,7 @@ using namespace cv;
 const int MAX_CORNERS = 2000;
 const int TOLERENCE_WINSIZE = 10;//half of the winsize eg. 3 means winsize is 7
 const int SSD_WINSIZE = 3;//half of the winsize eg. 5 means winsize is 11
-const double SSD_THRESHOLD = 4;
+const double SSD_THRESHOLD = 3;
 const Size imgSize = Size(640,480);//640, 480
 
 
@@ -453,6 +453,9 @@ int main(int argc, const char * argv[]) {
 
         namedWindow("LKpyr_opticalFlow");
         imshow("LKpyr_opticalFlow",imgShow);
+        
+        //save image
+        imwrite("/Users/boyang/workspace/WordTracking2/saveImg/" + std::to_string(i)+".jpg", imgShow);
         cvWaitKey(1);
     }
 
