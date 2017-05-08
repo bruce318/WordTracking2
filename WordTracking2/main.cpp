@@ -35,6 +35,7 @@ Mat imgCur;
 std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
 std::map<CvPoint , int > map;
 std::vector<CvPoint> reuse2;
+std::vector<std::vector<int> > trackingTable;//a table to keep a record of tracking
 
 
 //functions
@@ -62,7 +63,7 @@ bool checkFeasibility (CvPoint newPoint, int i, std::vector<CvPoint> & reuse, in
         featureList[index2].push_back(reuse[reuseIt + 1]);
         cntTolerancePerformance++;
         //keep record on the tracking table
-        trackingTableThisFrame[index2] = 1;
+        trackingTableThisFrame[index2] = trackingTable[i - 2][index2] + 1;
         return true;
     } else {
         return false;
@@ -189,7 +190,7 @@ void thirdRoundCheck(int i, std::vector<CvPoint> & temp, std::vector<int> & trac
             featureList[indexToBeUse].push_back(startPoint);
             featureList[indexToBeUse].push_back(endPoint);
             cntAddByTolerance++;
-            trackingTableThisFrame[indexToBeUse] = 1;
+            trackingTableThisFrame[indexToBeUse] = trackingTable[i - 2][indexToBeUse] + 1;
             
         } else {
             temp.push_back(startPoint);
@@ -220,7 +221,7 @@ void static_of_tracking_chain (std::vector<std::vector<CvPoint>> featureList) {
 }
 
 //analysis: static of tracking chain by tracking table
-void analysis(std::vector<std::vector<int>> trackingTable) {
+void analysis() {
     for (int j = 0 ; j < trackingTable[0].size() ; j++) {
         int cntChainLength = 1;//start from 1. since one keypoint count as 1
         for (int i = 0 ; i < trackingTable.size() ; i++) {
@@ -241,7 +242,7 @@ int main(int argc, const char * argv[]) {
     //some var
     TermCriteria termcrit(TermCriteria::COUNT|TermCriteria::EPS,20,0.03);
     Size subPixWinSize(10,10), winSize(31,31);
-    std::vector<std::vector<int> > trackingTable;//a table to keep a record of tracking
+
     
     //read file
     std::vector<cv::String> fileNames;
@@ -349,7 +350,7 @@ int main(int argc, const char * argv[]) {
 //                        std::cout<<index<<"-"<<featureList[index].size() - 2<<std::endl;
 //                        std::cout<<"x="<<p0.x<<"y="<<p0.y<<std::endl;
                         //record on the tracking table
-                        trackingTableThisFrame[index] = 1;
+                        trackingTableThisFrame[index] = trackingTable[i - 2][index] + 1;
                     
                     } else {//duplicate
                         temp.push_back(CvPoint(-1 , -1));
@@ -364,10 +365,12 @@ int main(int argc, const char * argv[]) {
             }
         }
         
-        //second round add tolerance seek tracking point
-        second_round_check(reuse, temp, i, trackingTableThisFrame);
-        reuse.clear();
+
         if (i > 1) {
+            //second round add tolerance seek tracking point
+            second_round_check(reuse, temp, i, trackingTableThisFrame);
+            reuse.clear();
+            
             thirdRoundCheck(i, temp, trackingTableThisFrame);
             reuse2.clear();
         }
@@ -383,8 +386,16 @@ int main(int argc, const char * argv[]) {
             if(featureList[k].size() != i*2) {
                 //sometimes we set max corner to detect, but computer didn't find so many corner feature
                 if (tempIt < tempSize) {
-                    featureList[k].push_back(temp[tempIt++]);
-                    featureList[k].push_back(temp[tempIt++]);
+                    //avoid duplicate
+                    if(map.find(tempIt + 1) == map.end()){
+                        featureList[k].push_back(temp[tempIt++]);
+                        featureList[k].push_back(temp[tempIt++]);
+                    } else {
+                        featureList[k].push_back(CvPoint(-1 , -1));
+                        featureList[k].push_back(CvPoint(-1 , -1));
+                        tempIt += 2;
+                    }
+                    
                 } else {
                     featureList[k].push_back(CvPoint(-1 , -1));
                     featureList[k].push_back(CvPoint(-1 , -1));
@@ -436,7 +447,7 @@ int main(int argc, const char * argv[]) {
 
         namedWindow("LKpyr_opticalFlow");
         imshow("LKpyr_opticalFlow",imgShow);
-        cvWaitKey(3);
+        cvWaitKey(1);
     }
 
     
@@ -445,7 +456,7 @@ int main(int argc, const char * argv[]) {
 
     
     //analysis: static of tracking chain by tracking table
-    analysis(trackingTable);
+//    analysis();
     
     std::cout<<"addBy1PixelTorlerance"<<cntTolerancePerformance<<std::endl;
     std::cout<<"addByTolerance"<<cntAddByTolerance<<std::endl;
