@@ -31,9 +31,9 @@ int cnt_total_valid_point = 0;
 
 Scalar chainLengthColor[8] = {Scalar(0,0,255),Scalar(0,153,255),Scalar(0,255,255),Scalar(0,255,0),Scalar(255,255,0),Scalar(255,0,0),Scalar(255,0,153),Scalar(0,0,0)};//rainbow order
 
-Mat imgPrePre;
-Mat imgPre;
-Mat imgCur;
+Mat ingPre;
+Mat ingCur;
+Mat ingNext;
 std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
 std::map<CvPoint , int > map;
 std::vector<CvPoint> reuse2;
@@ -118,12 +118,12 @@ bool checkOutOfBound (CvPoint thisPoint) {
 }
 
 int ssd(CvPoint firstPoint, CvPoint secondPoint, int flag){
-    Mat img1 = imgPrePre;
+    Mat img1 = ingPre;
     Mat img2;
     if(flag == 1) {
-        img2 = imgPre;
+        img2 = ingCur;
     } else if (flag == 2) {
-        img2 = imgCur;
+        img2 = ingNext;
     }
     int sum = 0;
     if(checkOutOfBound(firstPoint) || checkOutOfBound(secondPoint)){
@@ -265,10 +265,10 @@ int main(int argc, const char * argv[]) {
         std::vector<int> trackingTableThisFrame(MAX_CORNERS, 0);
         
         //load image
-        imgPre = imread(fileNames[i], IMREAD_GRAYSCALE );
-        resize(imgPre, imgPre, imgSize);
-        imgCur = imread(fileNames[i+1], IMREAD_GRAYSCALE);
-        resize(imgCur, imgCur, imgSize);
+        ingCur = imread(fileNames[i], IMREAD_GRAYSCALE );
+        resize(ingCur, ingCur, imgSize);
+        ingNext = imread(fileNames[i+1], IMREAD_GRAYSCALE);
+        resize(ingNext, ingNext, imgSize);
         //load a color image to show
         Mat imgShow = imread(fileNames[i], IMREAD_COLOR);
         resize(imgShow, imgShow, imgSize);
@@ -281,7 +281,7 @@ int main(int argc, const char * argv[]) {
         std::vector<Point2f> featuresCur(MAX_CORNERS);
         
         //find good features to track
-        goodFeaturesToTrack(imgPre,
+        goodFeaturesToTrack(ingCur,
                             featuresPre,
                             MAX_CORNERS,
                             0.01,
@@ -292,7 +292,7 @@ int main(int argc, const char * argv[]) {
                             0.04
                             );
         
-        cornerSubPix(imgPre,
+        cornerSubPix(ingCur,
                      featuresPre,
                      subPixWinSize,
                      Size(-1,-1),
@@ -304,8 +304,8 @@ int main(int argc, const char * argv[]) {
         std::vector<float> error;
         
         //optical flow
-        calcOpticalFlowPyrLK(imgPre,
-                             imgCur,
+        calcOpticalFlowPyrLK(ingCur,
+                             ingNext,
                              featuresPre,
                              featuresCur,
                              status,
@@ -319,7 +319,7 @@ int main(int argc, const char * argv[]) {
             CvPoint p0=cvPoint(cvRound(featuresPre[j].x),cvRound(featuresPre[j].y));
             CvPoint p1=cvPoint(cvRound(featuresCur[j].x),cvRound(featuresCur[j].y));
             //draw line of the optical flow
-//            line(imgShow,p0,p1,CV_RGB(255,0,0),2);
+            line(imgShow,p0,p1,CV_RGB(255,255,255),2);
             
             //if is the first frame
             if(i == 1) {
@@ -425,14 +425,14 @@ int main(int argc, const char * argv[]) {
         //push back the tracking table for this frame
         trackingTable.push_back(trackingTableThisFrame);
         
-        imgPrePre.release();
+        ingPre.release();
         //copy to previous frame
-        imgPre.copyTo(imgPrePre);
+        ingCur.copyTo(ingPre);
         //clear
         temp.clear();
         trackingTableThisFrame.clear();
-        imgPre.release();
-        imgCur.release();
+        ingCur.release();
+        ingNext.release();
         
         
         //check the number of tracked key point
