@@ -29,7 +29,7 @@ int count = 0;
 int cntTolerancePerformance = 0;
 int cnt_total_valid_point = 0;
 
-Scalar chainLengthColor[8] = {Scalar(0,0,255),Scalar(0,153,255),Scalar(0,255,255),Scalar(0,255,0),Scalar(255,255,0),Scalar(255,0,0),Scalar(255,0,153),Scalar(0,0,0)};//rainbow order
+Scalar chainLengthColor[8] = {Scalar(0,0,255),Scalar(0,153,255),Scalar(0,255,255),Scalar(0,255,0),Scalar(255,255,0),Scalar(255,0,0),Scalar(255,0,153),Scalar(0,0,0)};//rainbow order + black
 
 Mat imgPre;
 Mat imgCur;
@@ -38,6 +38,7 @@ std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>
 std::map<CvPoint , int > map;
 std::vector<CvPoint> reuse2;
 std::vector<std::vector<int> > trackingTable;//a table to keep a record of tracking
+std::vector<CvPoint> rectBox;
 
 
 //functions
@@ -51,6 +52,16 @@ bool operator<(cv::Point const& a, cv::Point const& b)
 inline static double square(int a)
 {
     return a * a;
+}
+
+//Get the coordinates by mouse
+void onMouse( int event, int x, int y, int, void* ) {
+    if( event != CV_EVENT_LBUTTONDOWN )
+        return;
+    
+    Point2f pt = Point2f(x,y);
+    rectBox.push_back(pt);
+    std::cout<<"x="<<pt.x<<"\t y="<<pt.y<<"\n";
 }
 
 CvPoint add_tolerance(int x, int y ){
@@ -455,9 +466,12 @@ int main(int argc, const char * argv[]) {
         namedWindow("LKpyr_opticalFlow");
         imshow("LKpyr_opticalFlow",imgShow);
         
+        //draw rect box by click 4 corner
+        setMouseCallback("LKpyr_opticalFlow", onMouse, 0 );
+        
         //save image
-        imwrite("/Users/boyang/workspace/WordTracking2/saveImg/" + std::to_string(i)+".jpg", imgShow);
-        cvWaitKey(1);
+        imwrite("/Users/boyang/workspace/WordTracking2/saveImg/" + std::to_string(i) + ".jpg", imgShow);
+        cvWaitKey(0);
     }
 
     

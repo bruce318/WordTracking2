@@ -12,6 +12,7 @@
 		7C14EAAF1EA870E00087EC0F /* libopencv_imgproc.3.1.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C14EAAB1EA870E00087EC0F /* libopencv_imgproc.3.1.0.dylib */; };
 		7C14EAB01EA870E00087EC0F /* libopencv_objdetect.3.1.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C14EAAC1EA870E00087EC0F /* libopencv_objdetect.3.1.0.dylib */; };
 		7C14EAB11EA870E00087EC0F /* libopencv_core.3.1.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C14EAAD1EA870E00087EC0F /* libopencv_core.3.1.0.dylib */; };
+		7CF94A3D1EC440D200E8FFAD /* RectBoxes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CF94A3B1EC440D200E8FFAD /* RectBoxes.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -33,6 +34,8 @@
 		7C14EAAB1EA870E00087EC0F /* libopencv_imgproc.3.1.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_imgproc.3.1.0.dylib; path = ../../../../usr/local/lib/libopencv_imgproc.3.1.0.dylib; sourceTree = "<group>"; };
 		7C14EAAC1EA870E00087EC0F /* libopencv_objdetect.3.1.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_objdetect.3.1.0.dylib; path = ../../../../usr/local/lib/libopencv_objdetect.3.1.0.dylib; sourceTree = "<group>"; };
 		7C14EAAD1EA870E00087EC0F /* libopencv_core.3.1.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_core.3.1.0.dylib; path = ../../../../usr/local/lib/libopencv_core.3.1.0.dylib; sourceTree = "<group>"; };
+		7CF94A3B1EC440D200E8FFAD /* RectBoxes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RectBoxes.cpp; sourceTree = "<group>"; };
+		7CF94A3C1EC440D200E8FFAD /* RectBoxes.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = RectBoxes.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +74,8 @@
 			isa = PBXGroup;
 			children = (
 				7C14EAA21EA86ED20087EC0F /* main.cpp */,
+				7CF94A3B1EC440D200E8FFAD /* RectBoxes.cpp */,
+				7CF94A3C1EC440D200E8FFAD /* RectBoxes.hpp */,
 			);
 			path = WordTracking2;
 			sourceTree = "<group>";
@@ -144,6 +149,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7C14EAA31EA86ED20087EC0F /* main.cpp in Sources */,
+				7CF94A3D1EC440D200E8FFAD /* RectBoxes.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -312,6 +318,7 @@
 				7C14EAA81EA86ED20087EC0F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
