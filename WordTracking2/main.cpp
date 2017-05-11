@@ -18,9 +18,9 @@ using namespace cv;
 
 //global var
 const int MAX_CORNERS = 2000;
-const int TOLERENCE_WINSIZE = 10;//half of the winsize eg. 3 means winsize is 7
+const int TOLERENCE_WINSIZE = 15;//half of the winsize eg. 3 means winsize is 7
 const int SSD_WINSIZE = 3;//half of the winsize eg. 5 means winsize is 11
-const double SSD_THRESHOLD = 3;
+const double SSD_THRESHOLD = 4;
 const Size imgSize = Size(640,480);//640, 480
 
 
@@ -31,9 +31,9 @@ int cnt_total_valid_point = 0;
 
 Scalar chainLengthColor[8] = {Scalar(0,0,255),Scalar(0,153,255),Scalar(0,255,255),Scalar(0,255,0),Scalar(255,255,0),Scalar(255,0,0),Scalar(255,0,153),Scalar(0,0,0)};//rainbow order
 
-Mat ingPre;
-Mat ingCur;
-Mat ingNext;
+Mat imgPre;
+Mat imgCur;
+Mat imgNext;
 std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
 std::map<CvPoint , int > map;
 std::vector<CvPoint> reuse2;
@@ -118,12 +118,12 @@ bool checkOutOfBound (CvPoint thisPoint) {
 }
 
 int ssd(CvPoint firstPoint, CvPoint secondPoint, int flag){
-    Mat img1 = ingPre;
+    Mat img1 = imgPre;
     Mat img2;
     if(flag == 1) {
-        img2 = ingCur;
+        img2 = imgCur;
     } else if (flag == 2) {
-        img2 = ingNext;
+        img2 = imgNext;
     }
     int sum = 0;
     if(checkOutOfBound(firstPoint) || checkOutOfBound(secondPoint)){
@@ -145,14 +145,15 @@ int ssd(CvPoint firstPoint, CvPoint secondPoint, int flag){
 void thirdRoundCheck(int i, std::vector<CvPoint> & temp, std::vector<int> & trackingTableThisFrame) {
     //loop through list:reuse2 which are non tracking new points. check them whether can they connect to the tracking chain
     for(int reuse2It = 0 ; reuse2It < reuse2.size() ; reuse2It+=2) {
-        CvPoint startPoint = reuse2[reuse2It];
-        CvPoint endPoint = reuse2[reuse2It + 1];
-        double minRatio = DBL_MAX;
-        int indexToBeUse = -1;
+        CvPoint startPoint = reuse2[reuse2It];//a vector's start point in current frame(imgCur)
+        CvPoint endPoint = reuse2[reuse2It + 1];//a vector's end point in current frame(imgCur)
+        double minRatio = DBL_MAX;//set ration to max
+        int indexToBeUse = -1;//set a not valid number
         for(int dy = startPoint.y - TOLERENCE_WINSIZE ; dy <= startPoint.y + TOLERENCE_WINSIZE ; dy++ ) {
             for (int dx = startPoint.x - TOLERENCE_WINSIZE ; dx <= startPoint.x + TOLERENCE_WINSIZE ; dx++) {
-                CvPoint pointWithTolerance = CvPoint(dx,dy);//also the end point in the previous frame
+                CvPoint pointWithTolerance = CvPoint(dx,dy);//assume a end point in the previous frame
                 CvPoint preStartPoint;
+                //if found a same end point in previous frame as pointwithTolerance(=previous end point)
                 if(map.find(pointWithTolerance) != map.end()) {
                     int index3 = map[pointWithTolerance];
                     int size = featureList[index3].size();
@@ -162,9 +163,9 @@ void thirdRoundCheck(int i, std::vector<CvPoint> & temp, std::vector<int> & trac
                         if (featureList[index3][size - 1].x == pointWithTolerance.x
                             && featureList[index3][size - 1].y == pointWithTolerance.y) {
                             //index of the start point in the previous frame is size - 2
-                            preStartPoint = featureList[index3][size - 2];
+                            preStartPoint = featureList[index3][size - 2];//last index is size-1,want the one before the last one
                             int U_0 = ssd(preStartPoint, pointWithTolerance, 1);
-                            int U_1 = ssd(preStartPoint, endPoint, 2);
+                            int U_1 = ssd(preStartPoint, startPoint, 1);
                             double ratio = DBL_MAX;
                             if(U_0 == 0) {
                                 if(U_1 == 0) {
@@ -265,10 +266,10 @@ int main(int argc, const char * argv[]) {
         std::vector<int> trackingTableThisFrame(MAX_CORNERS, 0);
         
         //load image
-        ingCur = imread(fileNames[i], IMREAD_GRAYSCALE );
-        resize(ingCur, ingCur, imgSize);
-        ingNext = imread(fileNames[i+1], IMREAD_GRAYSCALE);
-        resize(ingNext, ingNext, imgSize);
+        imgCur = imread(fileNames[i], IMREAD_GRAYSCALE );
+        resize(imgCur, imgCur, imgSize);
+        imgNext = imread(fileNames[i+1], IMREAD_GRAYSCALE);
+        resize(imgNext, imgNext, imgSize);
         //load a color image to show
         Mat imgShow = imread(fileNames[i], IMREAD_COLOR);
         resize(imgShow, imgShow, imgSize);
@@ -281,7 +282,7 @@ int main(int argc, const char * argv[]) {
         std::vector<Point2f> featuresCur(MAX_CORNERS);
         
         //find good features to track
-        goodFeaturesToTrack(ingCur,
+        goodFeaturesToTrack(imgCur,
                             featuresPre,
                             MAX_CORNERS,
                             0.01,
@@ -292,7 +293,7 @@ int main(int argc, const char * argv[]) {
                             0.04
                             );
         
-        cornerSubPix(ingCur,
+        cornerSubPix(imgCur,
                      featuresPre,
                      subPixWinSize,
                      Size(-1,-1),
@@ -304,8 +305,8 @@ int main(int argc, const char * argv[]) {
         std::vector<float> error;
         
         //optical flow
-        calcOpticalFlowPyrLK(ingCur,
-                             ingNext,
+        calcOpticalFlowPyrLK(imgCur,
+                             imgNext,
                              featuresPre,
                              featuresCur,
                              status,
@@ -425,14 +426,14 @@ int main(int argc, const char * argv[]) {
         //push back the tracking table for this frame
         trackingTable.push_back(trackingTableThisFrame);
         
-        ingPre.release();
+        imgPre.release();
         //copy to previous frame
-        ingCur.copyTo(ingPre);
+        imgCur.copyTo(imgPre);
         //clear
         temp.clear();
         trackingTableThisFrame.clear();
-        ingCur.release();
-        ingNext.release();
+        imgCur.release();
+        imgNext.release();
         
         
         //check the number of tracked key point
