@@ -13,6 +13,7 @@
 #include "math.h"
 #include <iostream>
 #include <map>
+#include "RectBoxes.hpp"
 
 using namespace cv;
 
@@ -38,7 +39,6 @@ std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>
 std::map<CvPoint , int > map;
 std::vector<CvPoint> reuse2;
 std::vector<std::vector<int> > trackingTable;//a table to keep a record of tracking
-std::vector<CvPoint> rectBox;
 
 
 //functions
@@ -59,8 +59,8 @@ void onMouse( int event, int x, int y, int, void* ) {
     if( event != CV_EVENT_LBUTTONDOWN )
         return;
     
-    Point2f pt = Point2f(x,y);
-    rectBox.push_back(pt);
+    CvPoint pt = CvPoint(x,y);
+    RectBoxes::addCorner(pt);
     std::cout<<"x="<<pt.x<<"\t y="<<pt.y<<"\n";
 }
 
@@ -251,6 +251,52 @@ void analysis() {
     }
 }
 
+void drawRectangle(CvPoint topLeft, CvPoint bottomRight) {
+    
+    
+}
+
+//find point in the rect and calculate the translation vector than create new rect
+void findPointInRectAndCreateNewRect(int i) {
+    int rectListSize = RectBoxes::getRectCornerSize();
+    //loop through all the rectangles. Each rect use 2 spot to store. So r+=2
+    for(int r = 0 ; r < rectListSize ; r+=2) {
+        CvPoint topLeft = RectBoxes::popFromRectCorner();
+        CvPoint bottomRight = RectBoxes::popFromRectCorner();
+        //loop through all key point in previous frame
+        for(int k = 0 ; k < MAX_CORNERS ; k++) {
+            CvPoint pointPreFrame = featureList[k][(i-1)*2-1];
+            //if it is a tracking point and it is in the rect box
+            if(trackingTable[i][k] > 0 && RectBoxes::insideTheBox(topLeft, bottomRight, pointPreFrame)) {
+                RectBoxes::pushToInBoxPointsPreFrame(pointPreFrame);
+                CvPoint correlatePointInThisFrame = featureList[k][i*2-1];
+                RectBoxes::pushToInBoxPointsCurFrame(correlatePointInThisFrame);
+                
+                
+            }
+        }
+        CvPoint medianPointPre = RectBoxes::calculateMedianPointPrePoints();
+        CvPoint medianPointCur = RectBoxes::calculateMedianPointCurPoints();
+        // chack validity
+        if(medianPointPre.x != -1 && medianPointPre.y != -1) {
+            //create new rect by adding translation vector
+            int xD = medianPointCur.x - medianPointPre.x;
+            int yD = medianPointCur.y - medianPointPre.y;
+            CvPoint newTopLeft = CvPoint(topLeft.x + xD, topLeft.y +yD);
+            CvPoint newBottomRight = CvPoint(bottomRight.x + xD, bottomRight.y + yD);
+            
+            //update the rect for this frame
+            RectBoxes::addCorner(newTopLeft);
+            RectBoxes::addCorner(newBottomRight);
+            
+            //draw rectangle
+            drawRectangle(newTopLeft, newBottomRight);
+            
+        }
+    }
+    
+    
+}
 
 int main(int argc, const char * argv[]) {
     //some var
@@ -462,15 +508,24 @@ int main(int argc, const char * argv[]) {
     //            }
     //        }
     //    }
+        
+        if(i>1) {
+            //find points in the rectangle
+            findPointInRectAndCreateNewRect(i);
 
+        }
+        
+
+        
         namedWindow("LKpyr_opticalFlow");
         imshow("LKpyr_opticalFlow",imgShow);
         
-        //draw rect box by click 4 corner
-        setMouseCallback("LKpyr_opticalFlow", onMouse, 0 );
-        
         //save image
         imwrite("/Users/boyang/workspace/WordTracking2/saveImg/" + std::to_string(i) + ".jpg", imgShow);
+        
+        //select rect box by click 2 corner(top left and bottom right)
+        setMouseCallback("LKpyr_opticalFlow", onMouse, 0 );
+        
         cvWaitKey(0);
     }
 
