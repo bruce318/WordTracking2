@@ -35,6 +35,7 @@ Scalar chainLengthColor[8] = {Scalar(0,0,255),Scalar(0,153,255),Scalar(0,255,255
 Mat imgPre;
 Mat imgCur;
 Mat imgNext;
+Mat imgShow;
 std::vector<std::vector<CvPoint>> featureList(MAX_CORNERS , std::vector<CvPoint>(0,0));
 std::map<CvPoint , int > map;
 std::vector<CvPoint> reuse2;
@@ -252,8 +253,12 @@ void analysis() {
 }
 
 void drawRectangle(CvPoint topLeft, CvPoint bottomRight) {
-    
-    
+    CvPoint topRight = CvPoint(bottomRight.x, topLeft.y);
+    CvPoint bottomLeft = CvPoint(topLeft.x, bottomRight.y);
+    line(imgShow,topLeft,topRight,CV_RGB(255,0,0),2);
+    line(imgShow,topRight,bottomRight,CV_RGB(255,0,0),2);
+    line(imgShow,bottomRight,bottomLeft,CV_RGB(255,0,0),2);
+    line(imgShow,bottomLeft,topLeft,CV_RGB(255,0,0),2);
 }
 
 //find point in the rect and calculate the translation vector than create new rect
@@ -267,7 +272,7 @@ void findPointInRectAndCreateNewRect(int i) {
         for(int k = 0 ; k < MAX_CORNERS ; k++) {
             CvPoint pointPreFrame = featureList[k][(i-1)*2-1];
             //if it is a tracking point and it is in the rect box
-            if(trackingTable[i][k] > 0 && RectBoxes::insideTheBox(topLeft, bottomRight, pointPreFrame)) {
+            if(trackingTable[i-1][k] > 0 && RectBoxes::insideTheBox(topLeft, bottomRight, pointPreFrame)) {
                 RectBoxes::pushToInBoxPointsPreFrame(pointPreFrame);
                 CvPoint correlatePointInThisFrame = featureList[k][i*2-1];
                 RectBoxes::pushToInBoxPointsCurFrame(correlatePointInThisFrame);
@@ -328,7 +333,7 @@ int main(int argc, const char * argv[]) {
         imgNext = imread(fileNames[i+1], IMREAD_GRAYSCALE);
         resize(imgNext, imgNext, imgSize);
         //load a color image to show
-        Mat imgShow = imread(fileNames[i], IMREAD_COLOR);
+        imgShow = imread(fileNames[i], IMREAD_COLOR);
         resize(imgShow, imgShow, imgSize);
         
         int corner_count=MAX_CORNERS;

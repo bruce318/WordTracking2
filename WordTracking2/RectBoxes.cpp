@@ -52,7 +52,7 @@ void RectBoxes::pushToInBoxPointsCurFrame(CvPoint pt) {
 
 CvPoint RectBoxes::calculateMedianPointPrePoints() {
     int size = inBoxPointsPre.size();
-    if (size = 0) {
+    if (size == 0) {
         std::cout<<"No features found in box"<<std::endl;
         return CvPoint(-1,-1);
     }
@@ -70,7 +70,7 @@ CvPoint RectBoxes::calculateMedianPointPrePoints() {
 
 CvPoint RectBoxes::calculateMedianPointCurPoints() {
     int size = inBoxPointsCur.size();
-    if (size = 0) {
+    if (size == 0) {
         std::cout<<"No features found in box"<<std::endl;
         return CvPoint(-1,-1);
     }
