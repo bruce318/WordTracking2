@@ -10,11 +10,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "WordTracking2/RectBoxes.cpp"
-            timestampString = "516522528.130769"
+            timestampString = "516530841.525615"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "19"
-            endingLineNumber = "19"
+            startingLineNumber = "27"
+            endingLineNumber = "27"
             landmarkName = "RectBoxes::addCorner(CvPoint pt)"
             landmarkType = "7">
          </BreakpointContent>

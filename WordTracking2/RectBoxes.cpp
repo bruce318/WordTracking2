@@ -10,8 +10,16 @@
 
 int a = 0;
 std::queue<CvPoint> RectBoxes::rectBoxCorners;
-std::vector<CvPoint> RectBoxes::inBoxPointsPre;
-std::vector<CvPoint> RectBoxes::inBoxPointsCur;
+std::vector<CvPoint> RectBoxes::pointDiff;
+
+struct mySortClass {
+    bool operator() (CvPoint pt1, CvPoint pt2) {
+        if(pt1.x == pt2.x) {
+            return (pt1.y < pt2.y);
+        }
+        return (pt1.x < pt2.x);
+    }
+} mySort;
 
 //add rectangle's corners to the list(top left and bottom right corner)
 void RectBoxes::addCorner(CvPoint pt) {
@@ -40,51 +48,20 @@ bool RectBoxes::insideTheBox(CvPoint topLeft, CvPoint bottomRight, CvPoint point
     }
 }
 
-//put the point(previous frame) in to the inBoxPoints vector
-void RectBoxes::pushToInBoxPointsPreFrame(CvPoint pt) {
-    inBoxPointsPre.push_back(pt);
+//put the tranlation vector to the list
+void RectBoxes::pushDiff(CvPoint pt) {
+    pointDiff.push_back(pt);
 }
 
-//put the point(current frame) in to the inBoxPoints vector
-void RectBoxes::pushToInBoxPointsCurFrame(CvPoint pt) {
-    inBoxPointsCur.push_back(pt);
-}
-
-CvPoint RectBoxes::calculateMedianPointPrePoints() {
-    int size = inBoxPointsPre.size();
+CvPoint RectBoxes::calculateMedianTranslationVec() {
+    int size = pointDiff.size();
     if (size == 0) {
         std::cout<<"No features found in box"<<std::endl;
-        return CvPoint(-1,-1);
+        return CvPoint(-2000,-2000);
     }
-    int x = 0;
-    int y = 0;
-    //sum up
-    for(int k = 0 ; k < size ; k++) {
-        x += inBoxPointsPre[k].x;
-        y += inBoxPointsPre[k].y;
-    }
-    x = x/size;
-    y = y/size;
-    inBoxPointsPre.clear();
-    return CvPoint(x,y);
-}
-
-CvPoint RectBoxes::calculateMedianPointCurPoints() {
-    int size = inBoxPointsCur.size();
-    if (size == 0) {
-        std::cout<<"No features found in box"<<std::endl;
-        return CvPoint(-1,-1);
-    }
-    int x = 0;
-    int y = 0;
-    //sum up
-    for(int k = 0 ; k < size ; k++) {
-        x += inBoxPointsCur[k].x;
-        y += inBoxPointsCur[k].y;
-    }
-    x = x/size;
-    y = y/size;
-    inBoxPointsCur.clear();
-    return CvPoint(x,y);
+    std::sort(pointDiff.begin(), pointDiff.end(), mySort);
+    CvPoint ans = pointDiff[size/2];
+    pointDiff.clear();
+    return ans;
 }
 

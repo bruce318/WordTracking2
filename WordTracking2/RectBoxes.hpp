@@ -22,13 +22,12 @@ public:
     static bool insideTheBox(CvPoint topLeft, CvPoint bottomRight, CvPoint pointPreFram);
     static void pushToInBoxPointsPreFrame(CvPoint pt);
     static void pushToInBoxPointsCurFrame(CvPoint pt);
-    static CvPoint calculateMedianPointPrePoints();
-    static CvPoint calculateMedianPointCurPoints();
+    static void pushDiff(CvPoint pt);
+    static CvPoint calculateMedianTranslationVec();
     
 private:
     static std::queue<CvPoint> rectBoxCorners;
-    static std::vector<CvPoint> inBoxPointsPre;
-    static std::vector<CvPoint> inBoxPointsCur;
+    static std::vector<CvPoint> pointDiff;
     
 
 };

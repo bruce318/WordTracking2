@@ -195,8 +195,6 @@ void thirdRoundCheck(int i, std::vector<CvPoint> & temp, std::vector<int> & trac
                             std::cout<<"not find the right point in previous frame"<<std::endl;
                         }
                     }
-                    
-                    
                 }
             }
         }
@@ -273,20 +271,16 @@ void findPointInRectAndCreateNewRect(int i) {
             CvPoint pointPreFrame = featureList[k][(i-1)*2-1];
             //if it is a tracking point and it is in the rect box
             if(trackingTable[i-1][k] > 0 && RectBoxes::insideTheBox(topLeft, bottomRight, pointPreFrame)) {
-                RectBoxes::pushToInBoxPointsPreFrame(pointPreFrame);
                 CvPoint correlatePointInThisFrame = featureList[k][i*2-1];
-                RectBoxes::pushToInBoxPointsCurFrame(correlatePointInThisFrame);
+                CvPoint diff = CvPoint(correlatePointInThisFrame.x-pointPreFrame.x, correlatePointInThisFrame.y-pointPreFrame.y);
+                RectBoxes::pushDiff(diff);
             }
         }
-        CvPoint medianPointPre = RectBoxes::calculateMedianPointPrePoints();
-        CvPoint medianPointCur = RectBoxes::calculateMedianPointCurPoints();
+        CvPoint medianTranslationVec = RectBoxes::calculateMedianTranslationVec();
         // chack validity
-        if(medianPointPre.x != -1 && medianPointPre.y != -1) {
-            //create new rect by adding translation vector
-            int xD = medianPointCur.x - medianPointPre.x;
-            int yD = medianPointCur.y - medianPointPre.y;
-            CvPoint newTopLeft = CvPoint(topLeft.x + xD, topLeft.y +yD);
-            CvPoint newBottomRight = CvPoint(bottomRight.x + xD, bottomRight.y + yD);
+        if(medianTranslationVec.x != -2000 && medianTranslationVec.y != -2000) {
+            CvPoint newTopLeft = CvPoint(topLeft.x + medianTranslationVec.x, topLeft.y +medianTranslationVec.y);
+            CvPoint newBottomRight = CvPoint(bottomRight.x + medianTranslationVec.x, bottomRight.y + medianTranslationVec.y);
             
             //update the rect for this frame
             RectBoxes::addCorner(newTopLeft);
@@ -380,7 +374,7 @@ int main(int argc, const char * argv[]) {
             CvPoint p0=cvPoint(cvRound(featuresPre[j].x),cvRound(featuresPre[j].y));
             CvPoint p1=cvPoint(cvRound(featuresCur[j].x),cvRound(featuresCur[j].y));
             //draw line of the optical flow
-            line(imgShow,p0,p1,CV_RGB(255,255,255),2);
+//            line(imgShow,p0,p1,CV_RGB(255,255,255),2);
             
             //if is the first frame
             if(i == 1) {
