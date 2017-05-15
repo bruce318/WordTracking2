@@ -8,7 +8,7 @@
 
 #include "RectBoxes.hpp"
 
-
+int a = 0;
 std::queue<CvPoint> RectBoxes::rectBoxCorners;
 std::vector<CvPoint> RectBoxes::inBoxPointsPre;
 std::vector<CvPoint> RectBoxes::inBoxPointsCur;
@@ -16,7 +16,7 @@ std::vector<CvPoint> RectBoxes::inBoxPointsCur;
 //add rectangle's corners to the list(top left and bottom right corner)
 void RectBoxes::addCorner(CvPoint pt) {
     rectBoxCorners.push(pt);
-    std::cout<<"rectBoxCorners Size:"<<rectBoxCorners.size()<<std::endl;
+    std::cout<<std::to_string(a++)+"rectBoxCorners Size:"<<rectBoxCorners.size()<<std::endl;
 }
 
 //get current size of the queue(rectBoxCorners)
@@ -65,6 +65,7 @@ CvPoint RectBoxes::calculateMedianPointPrePoints() {
     }
     x = x/size;
     y = y/size;
+    inBoxPointsPre.clear();
     return CvPoint(x,y);
 }
 
@@ -83,6 +84,7 @@ CvPoint RectBoxes::calculateMedianPointCurPoints() {
     }
     x = x/size;
     y = y/size;
+    inBoxPointsCur.clear();
     return CvPoint(x,y);
 }
 

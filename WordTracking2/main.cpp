@@ -276,8 +276,6 @@ void findPointInRectAndCreateNewRect(int i) {
                 RectBoxes::pushToInBoxPointsPreFrame(pointPreFrame);
                 CvPoint correlatePointInThisFrame = featureList[k][i*2-1];
                 RectBoxes::pushToInBoxPointsCurFrame(correlatePointInThisFrame);
-                
-                
             }
         }
         CvPoint medianPointPre = RectBoxes::calculateMedianPointPrePoints();
