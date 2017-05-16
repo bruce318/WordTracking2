@@ -29,6 +29,7 @@ int cntAddByTolerance = 0;
 int count = 0;
 int cntTolerancePerformance = 0;
 int cnt_total_valid_point = 0;
+bool opticalFlowLineShow = false;
 
 Scalar chainLengthColor[8] = {Scalar(0,0,255),Scalar(0,153,255),Scalar(0,255,255),Scalar(0,255,0),Scalar(255,255,0),Scalar(255,0,0),Scalar(255,0,153),Scalar(0,0,0)};//rainbow order + black
 
@@ -253,10 +254,10 @@ void analysis() {
 void drawRectangle(CvPoint topLeft, CvPoint bottomRight) {
     CvPoint topRight = CvPoint(bottomRight.x, topLeft.y);
     CvPoint bottomLeft = CvPoint(topLeft.x, bottomRight.y);
-    line(imgShow,topLeft,topRight,CV_RGB(255,0,0),2);
-    line(imgShow,topRight,bottomRight,CV_RGB(255,0,0),2);
-    line(imgShow,bottomRight,bottomLeft,CV_RGB(255,0,0),2);
-    line(imgShow,bottomLeft,topLeft,CV_RGB(255,0,0),2);
+    line(imgShow,topLeft,topRight,CV_RGB(0,255,0),2);
+    line(imgShow,topRight,bottomRight,CV_RGB(0,255,0),2);
+    line(imgShow,bottomRight,bottomLeft,CV_RGB(0,255,0),2);
+    line(imgShow,bottomLeft,topLeft,CV_RGB(0,255,0),2);
 }
 
 //find point in the rect and calculate the translation vector than create new rect
@@ -268,10 +269,10 @@ void findPointInRectAndCreateNewRect(int i) {
         CvPoint bottomRight = RectBoxes::popFromRectCorner();
         //loop through all key point in previous frame
         for(int k = 0 ; k < MAX_CORNERS ; k++) {
-            CvPoint pointPreFrame = featureList[k][(i-1)*2-1];
+            CvPoint pointPreFrame = featureList[k][(i-2)*2];
             //if it is a tracking point and it is in the rect box
             if(trackingTable[i-1][k] > 0 && RectBoxes::insideTheBox(topLeft, bottomRight, pointPreFrame)) {
-                CvPoint correlatePointInThisFrame = featureList[k][i*2-1];
+                CvPoint correlatePointInThisFrame = featureList[k][(i-1)*2];
                 CvPoint diff = CvPoint(correlatePointInThisFrame.x-pointPreFrame.x, correlatePointInThisFrame.y-pointPreFrame.y);
                 RectBoxes::pushDiff(diff);
             }
@@ -288,11 +289,8 @@ void findPointInRectAndCreateNewRect(int i) {
             
             //draw rectangle
             drawRectangle(newTopLeft, newBottomRight);
-            
         }
     }
-    
-    
 }
 
 int main(int argc, const char * argv[]) {
@@ -374,7 +372,9 @@ int main(int argc, const char * argv[]) {
             CvPoint p0=cvPoint(cvRound(featuresPre[j].x),cvRound(featuresPre[j].y));
             CvPoint p1=cvPoint(cvRound(featuresCur[j].x),cvRound(featuresCur[j].y));
             //draw line of the optical flow
-//            line(imgShow,p0,p1,CV_RGB(255,255,255),2);
+            if(opticalFlowLineShow) {
+                line(imgShow,p0,p1,CV_RGB(255,255,255),1);
+            }
             
             //if is the first frame
             if(i == 1) {
@@ -456,9 +456,7 @@ int main(int argc, const char * argv[]) {
                 } else {
                     featureList[k].push_back(CvPoint(-1 , -1));
                     featureList[k].push_back(CvPoint(-1 , -1));
-                    
                 }
-                
             }
             //put the feature coordinate(not (-1,-1) one) into the map
             //and draw circles on the feature points. Color depends on the chain length
@@ -467,9 +465,7 @@ int main(int argc, const char * argv[]) {
                 int colorIndex = trackingTableThisFrame[k]>8?8:trackingTableThisFrame[k];
                 Scalar circleColor = chainLengthColor[colorIndex];
                 circle(imgShow, featureList[k][i*2 - 2], 3, circleColor, 1);
-                
             }
-            
         }
         if (tempIt != tempSize) {
             std::cout<<"size not match:"<<tempIt<<"-"<<tempSize<<std::endl;
@@ -509,7 +505,6 @@ int main(int argc, const char * argv[]) {
         if(i>1) {
             //find points in the rectangle
             findPointInRectAndCreateNewRect(i);
-
         }
         
 
@@ -542,35 +537,3 @@ int main(int argc, const char * argv[]) {
     return 0;
     
 }
-
-/*
- int line_thickness;  line_thickness=1;
- 
- CvScalar line_color;  line_color = CV_RGB(255, 0, 0);
- 
- CvPoint p,q;
- p.x = (int) cornersA[i].x;
- p.y = (int) cornersA[i].y;
- q.x = (int) cornersB[i].x;
- q.y = (int) cornersB[i].y;
- 
- double angle;  angle= atan2((double) p.y-q.y, (double) p.x-q.x);
- double hypotenuse; hypotenuse= sqrt(square(p.y-q.y) + square(p.x-q.x));
- double sum;
- int n;
- n=n+1;
- sum=sum+hypotenuse;
- //        printf("sum is %f/n",sum);
- //        printf("num is %d/n",n);
- q.x = (int) (p.x-1.5*hypotenuse*cos(angle));
- q.y = (int) (p.y-1.5*hypotenuse*sin(angle));
- 
- cvLine(imgC, p, q, CV_RGB(0, 0, 250), line_thickness, CV_AA, 0);
- 
- //  p.x = (int) (q.x+9*cos(angle+pi/4));
- //  p.y = (int) (q.y+9*sin(angle+pi/4));
- //  cvLine(imgC, p, q, line_color, line_thickness, CV_AA, 0);
- //  p.x = (int) (q.x+9*cos(angle-pi/4));
- //  p.y = (int) (q.y+9*sin(angle-pi/4));
- //  cvLine(imgC, p, q, line_color, line_thickness, CV_AA, 0);
- */
